@@ -12,6 +12,7 @@ app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json());
 
+app.use("/api/v1/health", healthRouter);
 app.use("/health", healthRouter);
 
 app.use(notFoundHandler);

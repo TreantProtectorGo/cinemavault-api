@@ -102,7 +102,7 @@ npm start
 Health check:
 
 ```bash
-curl http://localhost:4000/health
+curl http://localhost:4000/api/v1/health
 ```
 
 Expected response:
@@ -113,6 +113,28 @@ Expected response:
   "service": "cinemavault-api"
 }
 ```
+
+## Testing
+
+Run the Jest and Supertest suite:
+
+```bash
+npm test
+```
+
+Run tests in watch mode while developing:
+
+```bash
+npm run test:watch
+```
+
+Generate a coverage report:
+
+```bash
+npm run test:coverage
+```
+
+The Phase 1.5 testing scaffold includes a public health endpoint test in `tests/health.test.ts`. It imports the Express app directly and uses `request(app)`, so it does not start the real HTTP server.
 
 ## Phase 1 Scope
 
@@ -126,6 +148,7 @@ Implemented in this scaffold:
 - Central error handler
 - 404 handler
 - Prisma SQLite connection setup
+- Jest, ts-jest, and Supertest testing scaffold
 - Initial database models:
   - `User`
   - `Film`
