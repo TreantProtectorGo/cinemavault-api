@@ -12,6 +12,8 @@ This Phase 1 scaffold sets up a TypeScript-based REST API foundation using Expre
 - Prisma ORM
 - SQLite
 - Zod
+- bcrypt
+- JWT
 
 ## Project Structure
 
@@ -51,6 +53,9 @@ NODE_ENV=development
 PORT=4000
 DATABASE_URL="file:./dev.db"
 CORS_ORIGIN=http://localhost:5173
+JWT_SECRET=replace-with-a-long-random-secret
+JWT_EXPIRES_IN=1h
+BCRYPT_SALT_ROUNDS=12
 ```
 
 ## Database
@@ -114,6 +119,60 @@ Expected response:
 }
 ```
 
+## Authentication And RBAC
+
+Register a user:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "member@example.com",
+    "username": "member",
+    "password": "StrongPassword123!",
+    "displayName": "Cinema Member"
+  }'
+```
+
+Register an admin user for coursework RBAC verification:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@example.com",
+    "username": "admin",
+    "password": "AdminPassword123!",
+    "role": "ADMIN"
+  }'
+```
+
+Login:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "emailOrUsername": "member@example.com",
+    "password": "StrongPassword123!"
+  }'
+```
+
+Successful register and login responses include a JWT. Send it with protected requests:
+
+```bash
+Authorization: Bearer <token>
+```
+
+Admin-only RBAC test endpoint:
+
+```bash
+curl http://localhost:4000/api/v1/admin/ping \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+Passwords are hashed with bcrypt before storage. Plain text passwords are never stored or returned by the API.
+
 ## Testing
 
 Run the Jest and Supertest suite:
@@ -134,7 +193,19 @@ Generate a coverage report:
 npm run test:coverage
 ```
 
-The Phase 1.5 testing scaffold includes a public health endpoint test in `tests/health.test.ts`. It imports the Express app directly and uses `request(app)`, so it does not start the real HTTP server.
+The test scripts run `prisma db push` against `file:./test.db` before Jest starts. Tests import the Express app directly and use `request(app)`, so they do not start the real HTTP server.
+
+Current test coverage includes:
+
+- Public health endpoint
+- Registration success
+- Duplicate email or username conflict
+- Login success with JWT response
+- Wrong password rejection
+- Missing token rejection
+- Invalid token rejection
+- User role blocked from admin route
+- Admin role allowed through admin route
 
 ## Phase 1 Scope
 
@@ -149,6 +220,9 @@ Implemented in this scaffold:
 - 404 handler
 - Prisma SQLite connection setup
 - Jest, ts-jest, and Supertest testing scaffold
+- JWT authentication and RBAC middleware
+- Auth endpoints for register and login
+- Admin-only RBAC verification endpoint
 - Initial database models:
   - `User`
   - `Film`
@@ -160,8 +234,6 @@ Implemented in this scaffold:
 
 Not implemented yet:
 
-- Authentication
-- Authorization and RBAC
 - Film CRUD endpoints
 - Search/filter/sort endpoints
 - Favourites/watchlist/watched endpoints
