@@ -164,6 +164,19 @@ Successful register and login responses include a JWT. Send it with protected re
 Authorization: Bearer <token>
 ```
 
+## Basic Auth Evidence
+
+The main application authentication uses JWT. Basic Auth is included only as coursework/lab evidence and is not intended to replace the JWT flow used by the API client.
+
+Basic Auth evidence endpoint:
+
+```bash
+curl http://localhost:4000/api/v1/auth/basic-check \
+  -H "Authorization: Basic $(printf 'member:StrongPassword123!' | base64)"
+```
+
+The endpoint accepts `username:password` or `email:password`, checks the password against the stored bcrypt `passwordHash`, and never returns `passwordHash`.
+
 Admin-only RBAC test endpoint:
 
 ```bash
@@ -206,6 +219,10 @@ Current test coverage includes:
 - Invalid token rejection
 - User role blocked from admin route
 - Admin role allowed through admin route
+- Basic Auth success
+- Basic Auth missing header rejection
+- Basic Auth wrong password rejection
+- Basic Auth malformed header rejection
 
 ## Phase 1 Scope
 
@@ -222,6 +239,7 @@ Implemented in this scaffold:
 - Jest, ts-jest, and Supertest testing scaffold
 - JWT authentication and RBAC middleware
 - Auth endpoints for register and login
+- Basic Auth evidence endpoint
 - Admin-only RBAC verification endpoint
 - Initial database models:
   - `User`
@@ -240,7 +258,6 @@ Not implemented yet:
 - Direct message endpoints
 - OMDB API integration
 - OpenAPI/Swagger documentation
-- Jest and Supertest tests
 - React frontend integration
 
 ## Later Coursework Phases

@@ -17,6 +17,10 @@ const adminPayload = {
   role: "ADMIN"
 };
 
+function basicCredentials(identifier: string, password: string) {
+  return Buffer.from(`${identifier}:${password}`).toString("base64");
+}
+
 async function clearUsers() {
   await prisma.message.deleteMany();
   await prisma.watchedRecord.deleteMany();
@@ -141,5 +145,57 @@ describe("Authentication and RBAC", () => {
       status: "ok",
       role: "ADMIN"
     });
+  });
+
+  it("returns 200 for valid Basic Auth credentials", async () => {
+    await request(app).post("/api/v1/auth/register").send(userPayload);
+
+    const response = await request(app)
+      .get("/api/v1/auth/basic-check")
+      .set(
+        "Authorization",
+        `Basic ${basicCredentials(userPayload.username, userPayload.password)}`
+      );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      status: "ok",
+      auth: "basic",
+      user: {
+        username: userPayload.username,
+        email: userPayload.email,
+        role: "USER"
+      }
+    });
+    expect(response.body.user.id).toEqual(expect.any(String));
+    expect(response.body.user.passwordHash).toBeUndefined();
+  });
+
+  it("returns 401 when Basic Auth header is missing", async () => {
+    const response = await request(app).get("/api/v1/auth/basic-check");
+
+    expect(response.status).toBe(401);
+    expect(response.headers["www-authenticate"]).toBe("Basic realm=\"CinemaVault\"");
+  });
+
+  it("returns 401 when Basic Auth password is wrong", async () => {
+    await request(app).post("/api/v1/auth/register").send(userPayload);
+
+    const response = await request(app)
+      .get("/api/v1/auth/basic-check")
+      .set(
+        "Authorization",
+        `Basic ${basicCredentials(userPayload.email, "WrongPassword123!")}`
+      );
+
+    expect(response.status).toBe(401);
+  });
+
+  it("returns 401 when Basic Auth header is malformed", async () => {
+    const response = await request(app)
+      .get("/api/v1/auth/basic-check")
+      .set("Authorization", "Basic not-valid-base64");
+
+    expect(response.status).toBe(401);
   });
 });

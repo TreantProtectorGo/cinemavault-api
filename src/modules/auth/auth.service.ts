@@ -102,3 +102,24 @@ export async function loginUser(input: LoginInput) {
     token: signToken(user)
   };
 }
+
+export async function verifyBasicCredentials(identifier: string, password: string) {
+  const normalizedIdentifier = identifier.toLowerCase();
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [{ email: normalizedIdentifier }, { username: identifier }]
+    }
+  });
+
+  if (!user) {
+    throw new AuthError("Invalid Basic Auth credentials", 401);
+  }
+
+  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+
+  if (!passwordMatches) {
+    throw new AuthError("Invalid Basic Auth credentials", 401);
+  }
+
+  return publicUser(user);
+}
