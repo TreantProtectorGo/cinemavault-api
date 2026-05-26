@@ -101,6 +101,7 @@ model WatchedRecord {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   film       Film     @relation(fields: [filmId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, filmId])
   @@index([userId])
   @@index([filmId])
   @@index([watchedAt])

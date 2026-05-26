@@ -238,6 +238,55 @@ Film responses include HATEOAS-style links:
 }
 ```
 
+## Tracking Endpoints
+
+Favourites, watchlist, and watched routes require a JWT bearer token. They always operate on the authenticated user from the token; admin role is not required.
+
+Favourites:
+
+```text
+GET    /api/v1/favourites
+POST   /api/v1/favourites/:filmId
+DELETE /api/v1/favourites/:filmId
+```
+
+Watchlist:
+
+```text
+GET    /api/v1/watchlist
+POST   /api/v1/watchlist/:filmId
+DELETE /api/v1/watchlist/:filmId
+```
+
+Watched:
+
+```text
+GET    /api/v1/watched
+POST   /api/v1/watched/:filmId
+DELETE /api/v1/watched/:filmId
+```
+
+Example add favourite:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/favourites/<film-id> \
+  -H "Authorization: Bearer <user-token>"
+```
+
+Example add watched record:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/watched/<film-id> \
+  -H "Authorization: Bearer <user-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 9,
+    "notes": "Strong first contact story."
+  }'
+```
+
+Duplicate add requests are idempotent: the API returns the existing record with `200` instead of creating duplicates.
+
 ## Testing
 
 Run the Jest and Supertest suite:
@@ -283,6 +332,11 @@ Current test coverage includes:
 - Film not found handling
 - Admin-only film create/update/delete authorization
 - Film request body, route param, and query validation
+- Favourites add/list/remove with JWT
+- Favourites duplicate prevention and missing-film handling
+- Watchlist add/list/remove with JWT
+- Watched add/list/remove with rating and notes validation
+- Tracking user isolation between accounts
 
 ## Phase 1 Scope
 
@@ -304,6 +358,8 @@ Implemented in this scaffold:
 - Public Film browsing and detail endpoints
 - Admin-only Film create, update, and soft-delete endpoints
 - Film search, filter, sort, pagination, validation, and HATEOAS-style links
+- Authenticated favourites, watchlist, and watched tracking endpoints
+- Tracking duplicate prevention and user-scoped records
 - Initial database models:
   - `User`
   - `Film`
@@ -315,7 +371,6 @@ Implemented in this scaffold:
 
 Not implemented yet:
 
-- Favourites/watchlist/watched endpoints
 - Direct message endpoints
 - OMDB API integration
 - OpenAPI/Swagger documentation
