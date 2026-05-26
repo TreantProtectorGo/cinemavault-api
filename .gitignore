@@ -23,4 +23,6 @@ src/generated/
 generated/
 
 .DS_Store
-docs/
+docs/*
+!docs/plans/
+!docs/plans/*.md

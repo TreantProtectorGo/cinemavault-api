@@ -28,33 +28,34 @@ model User {
 }
 
 model Film {
-  id              String           @id @default(cuid())
-  title           String
-  slug            String           @unique
-  description     String
-  releaseYear     Int?
-  genre           String?
-  director        String?
-  runtimeMinutes  Int?
-  language        String?
-  country         String?
-  posterUrl       String?
-  isLive          Boolean          @default(false)
-  omdbId          String?          @unique
-  omdbRating      String?
+  id               String           @id @default(cuid())
+  title            String
+  genre            String?
+  year             Int?
+  rating           Float?
+  director         String?
+  cast             String?
+  plot             String?
+  posterUrl        String?
+  runtime          Int?
+  language         String?
+  country          String?
+  imdbId           String?          @unique
   omdbMetadataJson String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  isLive           Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  favourites      Favourite[]
-  watchlistItems  WatchlistItem[]
-  watchedRecords  WatchedRecord[]
-  messages        Message[]
+  favourites       Favourite[]
+  watchlistItems   WatchlistItem[]
+  watchedRecords   WatchedRecord[]
+  messages         Message[]
 
   @@index([isLive])
   @@index([title])
   @@index([genre])
-  @@index([releaseYear])
+  @@index([year])
+  @@index([rating])
 }
 
 model Favourite {

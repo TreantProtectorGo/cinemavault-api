@@ -186,6 +186,58 @@ curl http://localhost:4000/api/v1/admin/ping \
 
 Passwords are hashed with bcrypt before storage. Plain text passwords are never stored or returned by the API.
 
+## Film Endpoints
+
+Public film browsing routes:
+
+```text
+GET /api/v1/films
+GET /api/v1/films/:id
+```
+
+Admin-only film mutation routes:
+
+```text
+POST /api/v1/films
+PUT /api/v1/films/:id
+DELETE /api/v1/films/:id
+```
+
+Public `GET` routes do not require a token. Admin-only mutation routes require a JWT bearer token for a user with the `ADMIN` role.
+
+Example search/filter/sort request:
+
+```bash
+curl "http://localhost:4000/api/v1/films?title=batman&genre=Action&year=2008&sortBy=rating&order=desc&page=1&limit=10"
+```
+
+Supported query parameters for `GET /api/v1/films`:
+
+- `title`
+- `genre`
+- `year`
+- `rating`
+- `isLive`
+- `sortBy`
+- `order`
+- `page`
+- `limit`
+
+Film responses include HATEOAS-style links:
+
+```json
+{
+  "id": "film-id",
+  "title": "Inception",
+  "links": {
+    "self": "/api/v1/films/film-id",
+    "collection": "/api/v1/films",
+    "favourite": "/api/v1/favourites/film-id",
+    "watchlist": "/api/v1/watchlist/film-id"
+  }
+}
+```
+
 ## Testing
 
 Run the Jest and Supertest suite:
@@ -223,6 +275,14 @@ Current test coverage includes:
 - Basic Auth missing header rejection
 - Basic Auth wrong password rejection
 - Basic Auth malformed header rejection
+- Public films browsing
+- Films title search
+- Films genre/year/rating filters
+- Films sorting and pagination support
+- Public film detail lookup
+- Film not found handling
+- Admin-only film create/update/delete authorization
+- Film request body, route param, and query validation
 
 ## Phase 1 Scope
 
@@ -241,6 +301,9 @@ Implemented in this scaffold:
 - Auth endpoints for register and login
 - Basic Auth evidence endpoint
 - Admin-only RBAC verification endpoint
+- Public Film browsing and detail endpoints
+- Admin-only Film create, update, and soft-delete endpoints
+- Film search, filter, sort, pagination, validation, and HATEOAS-style links
 - Initial database models:
   - `User`
   - `Film`
@@ -252,8 +315,6 @@ Implemented in this scaffold:
 
 Not implemented yet:
 
-- Film CRUD endpoints
-- Search/filter/sort endpoints
 - Favourites/watchlist/watched endpoints
 - Direct message endpoints
 - OMDB API integration
