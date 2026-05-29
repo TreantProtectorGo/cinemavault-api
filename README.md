@@ -287,6 +287,51 @@ curl -X POST http://localhost:4000/api/v1/watched/<film-id> \
 
 Duplicate add requests are idempotent: the API returns the existing record with `200` instead of creating duplicates.
 
+## Message Endpoints
+
+Registered users can send direct messages to administrators about films. Normal users can only see their own messages and replies. Administrators can view all messages, reply, and soft-delete messages.
+
+User message routes:
+
+```text
+GET  /api/v1/messages
+POST /api/v1/messages
+```
+
+Admin-only message routes:
+
+```text
+GET    /api/v1/admin/messages
+POST   /api/v1/admin/messages/:id/reply
+DELETE /api/v1/admin/messages/:id
+```
+
+Example create message:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/messages \
+  -H "Authorization: Bearer <user-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filmId": "<film-id>",
+    "subject": "Screening question",
+    "body": "Will this film be available in the weekend showcase?"
+  }'
+```
+
+Example admin reply:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/admin/messages/<message-id>/reply \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "replyBody": "Yes, it is scheduled for Saturday."
+  }'
+```
+
+Messages must reference an existing film. Deleted messages are soft-deleted with `status: "DELETED"` and are hidden from normal user message lists.
+
 ## Testing
 
 Run the Jest and Supertest suite:
@@ -337,6 +382,11 @@ Current test coverage includes:
 - Watchlist add/list/remove with JWT
 - Watched add/list/remove with rating and notes validation
 - Tracking user isolation between accounts
+- Direct message create/list with JWT
+- Message missing-film and invalid-body handling
+- User message isolation between accounts
+- Admin message list/reply/delete RBAC
+- Soft-deleted messages hidden from normal user lists
 
 ## Phase 1 Scope
 
@@ -360,6 +410,8 @@ Implemented in this scaffold:
 - Film search, filter, sort, pagination, validation, and HATEOAS-style links
 - Authenticated favourites, watchlist, and watched tracking endpoints
 - Tracking duplicate prevention and user-scoped records
+- Direct messages between registered users and administrators
+- Admin message reply and soft-delete handling
 - Initial database models:
   - `User`
   - `Film`
@@ -371,7 +423,6 @@ Implemented in this scaffold:
 
 Not implemented yet:
 
-- Direct message endpoints
 - OMDB API integration
 - OpenAPI/Swagger documentation
 - React frontend integration

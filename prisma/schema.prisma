@@ -110,22 +110,24 @@ model WatchedRecord {
 model Message {
   id          String        @id @default(cuid())
   userId      String
-  filmId      String?
+  filmId      String
   adminId     String?
   subject     String
   body        String
-  adminReply  String?
+  replyBody   String?
   status      String        @default("OPEN")
   repliedAt   DateTime?
+  deletedAt   DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   user        User          @relation("UserMessages", fields: [userId], references: [id], onDelete: Cascade)
   admin       User?         @relation("AdminMessageReplies", fields: [adminId], references: [id], onDelete: SetNull)
-  film        Film?         @relation(fields: [filmId], references: [id], onDelete: SetNull)
+  film        Film          @relation(fields: [filmId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([adminId])
   @@index([filmId])
   @@index([status])
+  @@index([deletedAt])
 }
