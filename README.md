@@ -56,6 +56,7 @@ CORS_ORIGIN=http://localhost:5173
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=1h
 BCRYPT_SALT_ROUNDS=12
+OMDB_API_KEY=replace-with-your-omdb-api-key
 ```
 
 ## Database
@@ -201,6 +202,7 @@ Admin-only film mutation routes:
 POST /api/v1/films
 PUT /api/v1/films/:id
 DELETE /api/v1/films/:id
+POST /api/v1/films/import-omdb
 ```
 
 Public `GET` routes do not require a token. Admin-only mutation routes require a JWT bearer token for a user with the `ADMIN` role.
@@ -237,6 +239,21 @@ Film responses include HATEOAS-style links:
   }
 }
 ```
+
+## OMDB Import
+
+OMDB import is an admin-only backend feature. Set `OMDB_API_KEY` in `.env`; the key is never hardcoded in the source code.
+
+```bash
+curl -X POST http://localhost:4000/api/v1/films/import-omdb \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "imdbId": "tt0133093"
+  }'
+```
+
+You may send either `imdbId` or `title`. The API maps useful OMDB fields into the `Film` model and stores the raw OMDB response in `omdbMetadataJson`.
 
 ## Tracking Endpoints
 
@@ -332,6 +349,22 @@ curl -X POST http://localhost:4000/api/v1/admin/messages/<message-id>/reply \
 
 Messages must reference an existing film. Deleted messages are soft-deleted with `status: "DELETED"` and are hidden from normal user message lists.
 
+## OpenAPI Documentation
+
+Open the API documentation UI after starting the server:
+
+```text
+http://localhost:4000/api-docs
+```
+
+The raw OpenAPI 3.x JSON document is served at:
+
+```text
+http://localhost:4000/api-docs/openapi.json
+```
+
+The OpenAPI document covers health, auth, Basic Auth evidence, admin RBAC, films, OMDB import, favourites, watchlist, watched records, and messages.
+
 ## Testing
 
 Run the Jest and Supertest suite:
@@ -387,6 +420,9 @@ Current test coverage includes:
 - User message isolation between accounts
 - Admin message list/reply/delete RBAC
 - Soft-deleted messages hidden from normal user lists
+- Admin-only OMDB import with mocked external HTTP tests
+- OMDB not found and external failure handling
+- OpenAPI documentation UI and JSON availability
 
 ## Phase 1 Scope
 
@@ -412,6 +448,9 @@ Implemented in this scaffold:
 - Tracking duplicate prevention and user-scoped records
 - Direct messages between registered users and administrators
 - Admin message reply and soft-delete handling
+- Admin-only OMDB metadata import
+- OpenAPI 3.x JSON documentation
+- API documentation UI at `/api-docs`
 - Initial database models:
   - `User`
   - `Film`
@@ -423,8 +462,6 @@ Implemented in this scaffold:
 
 Not implemented yet:
 
-- OMDB API integration
-- OpenAPI/Swagger documentation
 - React frontend integration
 
 ## Later Coursework Phases
@@ -433,8 +470,8 @@ The scaffold is prepared for:
 
 - Phase 2: Basic Auth evidence, JWT authentication, and `admin`/`user` RBAC
 - Phase 3: public safe GET film browsing plus admin CRUD
-- Phase 4: favourites, watchlist, watched records, and direct messages
-- Phase 5: OMDB metadata import
-- Phase 6: OpenAPI/Swagger documentation
+- Phase 4: favourites, watchlist, and watched records
+- Phase 5: direct messages with admin reply/delete
+- Phase 6: OMDB metadata import and OpenAPI documentation
 - Phase 7: Jest and Supertest API endpoint tests
 - Phase 8: React TypeScript SPA integration

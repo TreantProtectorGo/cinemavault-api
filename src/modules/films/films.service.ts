@@ -1,8 +1,10 @@
 import { Prisma } from "@prisma/client";
+import { env } from "../../config/env.js";
 import { prisma } from "../../db/prisma.js";
 import type {
   CreateFilmInput,
   FilmQueryInput,
+  ImportOmdbInput,
   UpdateFilmInput
 } from "./films.schemas.js";
 
@@ -142,6 +144,131 @@ export async function createFilm(input: CreateFilmInput) {
     const film = await prisma.film.create({
       data: input
     });
+
+    return formatFilm(film);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new FilmError("Film with this unique field already exists", 409);
+    }
+
+    throw error;
+  }
+}
+
+type OmdbFilmResponse = {
+  Response?: string;
+  Error?: string;
+  Title?: string;
+  Year?: string;
+  Genre?: string;
+  Director?: string;
+  Actors?: string;
+  Plot?: string;
+  Poster?: string;
+  Runtime?: string;
+  Language?: string;
+  Country?: string;
+  imdbID?: string;
+  imdbRating?: string;
+  [key: string]: unknown;
+};
+
+function parseYear(value: string | undefined) {
+  const match = value?.match(/\d{4}/);
+
+  return match ? Number(match[0]) : undefined;
+}
+
+function parseRuntime(value: string | undefined) {
+  const match = value?.match(/\d+/);
+
+  return match ? Number(match[0]) : undefined;
+}
+
+function parseRating(value: string | undefined) {
+  const rating = Number(value);
+
+  return Number.isFinite(rating) ? rating : undefined;
+}
+
+function normaliseOmdbText(value: string | undefined) {
+  return value && value !== "N/A" ? value : undefined;
+}
+
+export async function importFilmFromOmdb(input: ImportOmdbInput) {
+  if (!env.OMDB_API_KEY) {
+    throw new FilmError("OMDB API key is not configured", 500);
+  }
+
+  const url = new URL("https://www.omdbapi.com/");
+  url.searchParams.set("apikey", env.OMDB_API_KEY);
+
+  if (input.imdbId) {
+    url.searchParams.set("i", input.imdbId);
+  } else if (input.title) {
+    url.searchParams.set("t", input.title);
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(url);
+  } catch {
+    throw new FilmError("OMDB API request failed", 502);
+  }
+
+  if (!response.ok) {
+    throw new FilmError("OMDB API request failed", 502);
+  }
+
+  let omdbFilm: OmdbFilmResponse;
+
+  try {
+    omdbFilm = (await response.json()) as OmdbFilmResponse;
+  } catch {
+    throw new FilmError("OMDB API response was invalid", 502);
+  }
+
+  if (omdbFilm.Response === "False") {
+    throw new FilmError("Film not found in OMDB", 404);
+  }
+
+  if (!omdbFilm.Title) {
+    throw new FilmError("OMDB API response was invalid", 502);
+  }
+
+  const filmData = {
+    title: omdbFilm.Title,
+    genre: normaliseOmdbText(omdbFilm.Genre),
+    year: parseYear(omdbFilm.Year),
+    rating: parseRating(omdbFilm.imdbRating),
+    director: normaliseOmdbText(omdbFilm.Director),
+    cast: normaliseOmdbText(omdbFilm.Actors),
+    plot: normaliseOmdbText(omdbFilm.Plot),
+    posterUrl: normaliseOmdbText(omdbFilm.Poster),
+    runtime: parseRuntime(omdbFilm.Runtime),
+    language: normaliseOmdbText(omdbFilm.Language),
+    country: normaliseOmdbText(omdbFilm.Country),
+    imdbId: normaliseOmdbText(omdbFilm.imdbID),
+    omdbMetadataJson: JSON.stringify(omdbFilm),
+    isLive: true
+  };
+
+  try {
+    const film = filmData.imdbId
+      ? await prisma.film.upsert({
+          where: {
+            imdbId: filmData.imdbId
+          },
+          create: filmData,
+          update: filmData
+        })
+      : await prisma.film.create({
+          data: filmData
+        });
 
     return formatFilm(film);
   } catch (error) {

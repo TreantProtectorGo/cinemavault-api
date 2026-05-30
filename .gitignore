@@ -24,5 +24,6 @@ generated/
 
 .DS_Store
 docs/*
+!docs/openapi.json
 !docs/plans/
 !docs/plans/*.md

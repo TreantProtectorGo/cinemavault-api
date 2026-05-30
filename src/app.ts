@@ -14,6 +14,7 @@ import {
 import { watchedRouter } from "./modules/watched/watched.routes.js";
 import { watchlistRouter } from "./modules/watchlist/watchlist.routes.js";
 import { adminRouter } from "./routes/admin.routes.js";
+import { docsRouter } from "./routes/docs.routes.js";
 import { healthRouter } from "./routes/health.routes.js";
 
 export const app = express();
@@ -32,6 +33,7 @@ app.use("/api/v1/watched", watchedRouter);
 app.use("/api/v1/messages", messagesRouter);
 app.use("/api/v1/admin/messages", adminMessagesRouter);
 app.use("/api/v1/admin", adminRouter);
+app.use("/api-docs", docsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

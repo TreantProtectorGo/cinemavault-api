@@ -58,6 +58,17 @@ export const updateFilmSchema = createFilmSchema
     message: "At least one film field must be provided"
   });
 
+export const importOmdbSchema = z
+  .object({
+    imdbId: z.string().trim().min(1).max(32).optional(),
+    title: z.string().trim().min(1).max(200).optional()
+  })
+  .strict()
+  .refine((value) => value.imdbId || value.title, {
+    message: "Either imdbId or title must be provided"
+  });
+
 export type CreateFilmInput = z.infer<typeof createFilmSchema>;
 export type UpdateFilmInput = z.infer<typeof updateFilmSchema>;
 export type FilmQueryInput = z.infer<typeof filmQuerySchema>;
+export type ImportOmdbInput = z.infer<typeof importOmdbSchema>;

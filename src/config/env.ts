@@ -16,7 +16,11 @@ const envSchema = z.object({
     .union([z.string().min(1), z.number().positive()])
     .default("1h")
     .transform((value) => value as JwtExpiresIn),
-  BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12)
+  BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
+  OMDB_API_KEY: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional()
+  )
 });
 
 export const env = envSchema.parse(process.env);

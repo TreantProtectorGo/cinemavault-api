@@ -5,6 +5,7 @@ import {
   createFilm,
   deleteFilm,
   getFilmById,
+  importFilmFromOmdb,
   listFilms,
   updateFilm
 } from "./films.service.js";
@@ -12,6 +13,7 @@ import {
   createFilmSchema,
   filmIdParamSchema,
   filmQuerySchema,
+  importOmdbSchema,
   updateFilmSchema
 } from "./films.schemas.js";
 
@@ -38,6 +40,22 @@ filmsRouter.get("/:id", async (req, res, next) => {
     next(error);
   }
 });
+
+filmsRouter.post(
+  "/import-omdb",
+  authenticate,
+  authorizeRoles("ADMIN"),
+  async (req, res, next) => {
+    try {
+      const input = importOmdbSchema.parse(req.body);
+      const film = await importFilmFromOmdb(input);
+
+      res.status(201).json(film);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 filmsRouter.post(
   "/",
