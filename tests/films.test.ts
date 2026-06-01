@@ -163,6 +163,12 @@ describe("Films API", () => {
     ]);
   });
 
+  it("public GET /api/v1/films with invalid query params returns 400", async () => {
+    const response = await request(app).get("/api/v1/films?year=not-a-year");
+
+    expect(response.status).toBe(400);
+  });
+
   it("public GET /api/v1/films/:id returns one film", async () => {
     const film = await createFilm(adminToken, inceptionPayload);
 
@@ -179,6 +185,29 @@ describe("Films API", () => {
         watchlist: `/api/v1/watchlist/${film.id}`
       }
     });
+  });
+
+  it("public GET /api/v1/films/:id includes conditional request headers", async () => {
+    const film = await createFilm(adminToken, inceptionPayload);
+
+    const response = await request(app).get(`/api/v1/films/${film.id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.etag).toEqual(expect.any(String));
+    expect(response.headers["last-modified"]).toEqual(expect.any(String));
+    expect(response.body.title).toBe("Inception");
+  });
+
+  it("public GET /api/v1/films/:id returns 304 when If-None-Match matches", async () => {
+    const film = await createFilm(adminToken, inceptionPayload);
+
+    const firstResponse = await request(app).get(`/api/v1/films/${film.id}`);
+    const secondResponse = await request(app)
+      .get(`/api/v1/films/${film.id}`)
+      .set("If-None-Match", firstResponse.headers.etag);
+
+    expect(secondResponse.status).toBe(304);
+    expect(secondResponse.text).toBe("");
   });
 
   it("public GET /api/v1/films/:id with missing film returns 404", async () => {

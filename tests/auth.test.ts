@@ -92,6 +92,7 @@ describe("Authentication and RBAC", () => {
       username: userPayload.username,
       role: "USER"
     });
+    expect(JSON.stringify(response.body)).not.toContain("passwordHash");
   });
 
   it("returns 401 for a wrong password", async () => {

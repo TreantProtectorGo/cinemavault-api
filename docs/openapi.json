@@ -26,6 +26,38 @@
     { "name": "Messages" }
   ],
   "paths": {
+    "/api-docs": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Serve the API documentation UI",
+        "responses": {
+          "200": {
+            "description": "Redoc HTML documentation page",
+            "content": {
+              "text/html": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api-docs/openapi.json": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Serve the raw OpenAPI JSON document",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.x JSON",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": ["Health"],
@@ -246,9 +278,30 @@
       "get": {
         "tags": ["Films"],
         "summary": "Get one film by id",
+        "description": "Returns ETag and Last-Modified headers. If the client sends a matching If-None-Match or If-Modified-Since header, the API returns 304 Not Modified.",
         "parameters": [{ "$ref": "#/components/parameters/FilmId" }],
         "responses": {
-          "200": { "$ref": "#/components/responses/FilmResponse" },
+          "200": {
+            "description": "Film response",
+            "headers": {
+              "ETag": {
+                "description": "Weak entity tag for conditional requests",
+                "schema": { "type": "string" }
+              },
+              "Last-Modified": {
+                "description": "Last film update time in HTTP date format",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Film" }
+              }
+            }
+          },
+          "304": {
+            "description": "Film has not changed since the supplied request validator"
+          },
           "400": { "$ref": "#/components/responses/BadRequest" },
           "404": { "$ref": "#/components/responses/NotFound" },
           "500": { "$ref": "#/components/responses/InternalServerError" }

@@ -77,6 +77,10 @@ async function createMessage(token: string, filmId: string) {
   return response.body as { id: string };
 }
 
+function expectNoPasswordHash(payload: unknown) {
+  expect(JSON.stringify(payload)).not.toContain("passwordHash");
+}
+
 describe("Messages API", () => {
   let adminToken: string;
   let userAToken: string;
@@ -128,7 +132,7 @@ describe("Messages API", () => {
         delete: `/api/v1/admin/messages/${response.body.id}`
       }
     });
-    expect(response.body.sender.passwordHash).toBeUndefined();
+    expectNoPasswordHash(response.body);
   });
 
   it("POST /api/v1/messages with missing film returns 404", async () => {
@@ -187,7 +191,7 @@ describe("Messages API", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data).toHaveLength(1);
-    expect(response.body.data[0].sender.passwordHash).toBeUndefined();
+    expectNoPasswordHash(response.body);
   });
 
   it("POST /api/v1/admin/messages/:id/reply with user token returns 403", async () => {

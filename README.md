@@ -1,8 +1,8 @@
 # CinemaVault API
 
-CinemaVault API is the backend repository for the Coventry University 6003CEM Web API Development CW2 project.
+CinemaVault is the backend repository for the Coventry University 6003CEM Web API Development CW2 project.
 
-This Phase 1 scaffold sets up a TypeScript-based REST API foundation using Express, Prisma, SQLite, and Zod. It does not implement the full feature set yet.
+It provides a TypeScript REST API for a secure film discovery platform with public film browsing, JWT authentication, role-based admin controls, user tracking features, direct messages, OMDB metadata import, OpenAPI documentation, and automated Jest/Supertest coverage.
 
 ## Tech Stack
 
@@ -11,16 +11,40 @@ This Phase 1 scaffold sets up a TypeScript-based REST API foundation using Expre
 - Express
 - Prisma ORM
 - SQLite
-- Zod
-- bcrypt
-- JWT
+- Zod validation
+- bcrypt password hashing
+- JWT bearer authentication
+- Basic Auth evidence endpoint
+- Jest + Supertest
+- OpenAPI 3.x with Redoc UI
+
+## Coursework Requirement Mapping
+
+- TypeScript REST API: Express app in `src/`
+- JSON by default: `express.json()` and JSON API responses
+- Backend/frontend separation: this repository is backend only
+- Authentication: JWT register/login flow
+- Basic Auth evidence: `GET /api/v1/auth/basic-check`
+- Authorization: RBAC middleware with `ADMIN` and `USER`
+- Public browsing: `GET /api/v1/films`, `GET /api/v1/films/:id`
+- Admin film management: `POST`, `PUT`, `DELETE /api/v1/films`
+- User features: favourites, watchlist, watched records
+- Direct messages: user-to-admin messages with admin reply/delete
+- External API: admin-only OMDB import
+- Documentation: OpenAPI JSON and Redoc UI
+- Testing: Jest + Supertest mock HTTP request tests
+- Maintainability: modular route/schema/service structure
 
 ## Project Structure
 
 ```text
 cinemavault-api/
+  docs/
+    openapi.json
+    plans/
   prisma/
     schema.prisma
+    seed.ts
   src/
     app.ts
     server.ts
@@ -30,7 +54,10 @@ cinemavault-api/
     modules/
     routes/
     types/
+  tests/
 ```
+
+`src/app.ts` configures and exports the Express app. `src/server.ts` only starts the HTTP server.
 
 ## Setup
 
@@ -46,7 +73,7 @@ Create a local environment file:
 cp .env.example .env
 ```
 
-Default local values:
+Required local environment values:
 
 ```env
 NODE_ENV=development
@@ -59,6 +86,8 @@ BCRYPT_SALT_ROUNDS=12
 OMDB_API_KEY=replace-with-your-omdb-api-key
 ```
 
+Do not commit `.env`. It is ignored by `.gitignore`.
+
 ## Database
 
 Validate the Prisma schema:
@@ -67,7 +96,7 @@ Validate the Prisma schema:
 npx prisma validate
 ```
 
-Create the SQLite database and initial migration:
+Create or update the local SQLite database:
 
 ```bash
 npm run prisma:migrate -- --name init
@@ -79,11 +108,35 @@ Regenerate Prisma Client if needed:
 npm run prisma:generate
 ```
 
+Seed demo data:
+
+```bash
+npm run prisma:seed
+```
+
 Open Prisma Studio:
 
 ```bash
 npm run prisma:studio
 ```
+
+## Demo Accounts
+
+The seed script creates these demo accounts:
+
+```text
+Admin
+Email: admin@cinemavault.local
+Username: admin
+Password: AdminPassword123!
+
+User
+Email: member@cinemavault.local
+Username: member
+Password: UserPassword123!
+```
+
+Seed data also includes live films, one favourite, one watchlist item, one watched record, and one sample message with an admin reply.
 
 ## Run
 
@@ -120,6 +173,22 @@ Expected response:
 }
 ```
 
+## API Documentation
+
+Open the Redoc API documentation UI after starting the server:
+
+```text
+http://localhost:4000/api-docs
+```
+
+The raw OpenAPI 3.x JSON document is served at:
+
+```text
+http://localhost:4000/api-docs/openapi.json
+```
+
+The OpenAPI document includes schemas, security schemes, request examples, response examples, query parameters, path parameters, and common error responses.
+
 ## Authentication And RBAC
 
 Register a user:
@@ -135,7 +204,7 @@ curl -X POST http://localhost:4000/api/v1/auth/register \
   }'
 ```
 
-Register an admin user for coursework RBAC verification:
+Register an admin for RBAC verification:
 
 ```bash
 curl -X POST http://localhost:4000/api/v1/auth/register \
@@ -159,105 +228,57 @@ curl -X POST http://localhost:4000/api/v1/auth/login \
   }'
 ```
 
-Successful register and login responses include a JWT. Send it with protected requests:
+Successful register and login responses include a JWT:
 
-```bash
+```text
 Authorization: Bearer <token>
 ```
 
+Passwords are hashed with bcrypt before storage. Plain text passwords and `passwordHash` are never returned by API responses.
+
 ## Basic Auth Evidence
 
-The main application authentication uses JWT. Basic Auth is included only as coursework/lab evidence and is not intended to replace the JWT flow used by the API client.
-
-Basic Auth evidence endpoint:
+The main application authentication uses JWT. Basic Auth is included only as coursework/lab evidence.
 
 ```bash
 curl http://localhost:4000/api/v1/auth/basic-check \
   -H "Authorization: Basic $(printf 'member:StrongPassword123!' | base64)"
 ```
 
-The endpoint accepts `username:password` or `email:password`, checks the password against the stored bcrypt `passwordHash`, and never returns `passwordHash`.
+The endpoint accepts `username:password` or `email:password`, checks the password against the stored bcrypt hash, and returns only public user fields.
 
-Admin-only RBAC test endpoint:
+## Endpoint Overview
 
-```bash
-curl http://localhost:4000/api/v1/admin/ping \
-  -H "Authorization: Bearer <admin-token>"
-```
-
-Passwords are hashed with bcrypt before storage. Plain text passwords are never stored or returned by the API.
-
-## Film Endpoints
-
-Public film browsing routes:
+Health:
 
 ```text
-GET /api/v1/films
-GET /api/v1/films/:id
+GET /api/v1/health
 ```
 
-Admin-only film mutation routes:
+Auth:
 
 ```text
-POST /api/v1/films
-PUT /api/v1/films/:id
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/auth/basic-check
+```
+
+Admin:
+
+```text
+GET /api/v1/admin/ping
+```
+
+Films:
+
+```text
+GET    /api/v1/films
+GET    /api/v1/films/:id
+POST   /api/v1/films
+PUT    /api/v1/films/:id
 DELETE /api/v1/films/:id
-POST /api/v1/films/import-omdb
+POST   /api/v1/films/import-omdb
 ```
-
-Public `GET` routes do not require a token. Admin-only mutation routes require a JWT bearer token for a user with the `ADMIN` role.
-
-Example search/filter/sort request:
-
-```bash
-curl "http://localhost:4000/api/v1/films?title=batman&genre=Action&year=2008&sortBy=rating&order=desc&page=1&limit=10"
-```
-
-Supported query parameters for `GET /api/v1/films`:
-
-- `title`
-- `genre`
-- `year`
-- `rating`
-- `isLive`
-- `sortBy`
-- `order`
-- `page`
-- `limit`
-
-Film responses include HATEOAS-style links:
-
-```json
-{
-  "id": "film-id",
-  "title": "Inception",
-  "links": {
-    "self": "/api/v1/films/film-id",
-    "collection": "/api/v1/films",
-    "favourite": "/api/v1/favourites/film-id",
-    "watchlist": "/api/v1/watchlist/film-id"
-  }
-}
-```
-
-## OMDB Import
-
-OMDB import is an admin-only backend feature. Set `OMDB_API_KEY` in `.env`; the key is never hardcoded in the source code.
-
-```bash
-curl -X POST http://localhost:4000/api/v1/films/import-omdb \
-  -H "Authorization: Bearer <admin-token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "imdbId": "tt0133093"
-  }'
-```
-
-You may send either `imdbId` or `title`. The API maps useful OMDB fields into the `Film` model and stores the raw OMDB response in `omdbMetadataJson`.
-
-## Tracking Endpoints
-
-Favourites, watchlist, and watched routes require a JWT bearer token. They always operate on the authenticated user from the token; admin role is not required.
 
 Favourites:
 
@@ -283,6 +304,73 @@ POST   /api/v1/watched/:filmId
 DELETE /api/v1/watched/:filmId
 ```
 
+Messages:
+
+```text
+GET    /api/v1/messages
+POST   /api/v1/messages
+GET    /api/v1/admin/messages
+POST   /api/v1/admin/messages/:id/reply
+DELETE /api/v1/admin/messages/:id
+```
+
+Docs:
+
+```text
+GET /api-docs
+GET /api-docs/openapi.json
+```
+
+## Film Browsing
+
+Public users can browse and search live films without a token:
+
+```bash
+curl "http://localhost:4000/api/v1/films?title=batman&genre=Action&year=2008&sortBy=rating&order=desc&page=1&limit=10"
+```
+
+Supported query parameters:
+
+- `title`
+- `genre`
+- `year`
+- `rating`
+- `isLive`
+- `sortBy`
+- `order`
+- `page`
+- `limit`
+
+Film detail responses include `ETag` and `Last-Modified` headers. Clients can use conditional requests to avoid downloading unchanged film data:
+
+```bash
+curl -i http://localhost:4000/api/v1/films/<film-id>
+
+curl -i http://localhost:4000/api/v1/films/<film-id> \
+  -H 'If-None-Match: W/"film-<film-id>-<timestamp>"'
+```
+
+If the validator matches, the API returns `304 Not Modified`.
+
+## OMDB Import
+
+OMDB import is admin-only. Set `OMDB_API_KEY` in `.env`; the key is never hardcoded in source code.
+
+```bash
+curl -X POST http://localhost:4000/api/v1/films/import-omdb \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "imdbId": "tt0133093"
+  }'
+```
+
+You may send either `imdbId` or `title`. The API maps useful OMDB fields into the `Film` model and stores the raw response in `omdbMetadataJson`.
+
+## Tracking Features
+
+Favourites, watchlist, and watched routes require JWT. Each request operates only on the authenticated user.
+
 Example add favourite:
 
 ```bash
@@ -290,7 +378,7 @@ curl -X POST http://localhost:4000/api/v1/favourites/<film-id> \
   -H "Authorization: Bearer <user-token>"
 ```
 
-Example add watched record:
+Example watched record:
 
 ```bash
 curl -X POST http://localhost:4000/api/v1/watched/<film-id> \
@@ -302,28 +390,13 @@ curl -X POST http://localhost:4000/api/v1/watched/<film-id> \
   }'
 ```
 
-Duplicate add requests are idempotent: the API returns the existing record with `200` instead of creating duplicates.
+Duplicate add requests are idempotent and return the existing record with `200`.
 
-## Message Endpoints
+## Messages
 
 Registered users can send direct messages to administrators about films. Normal users can only see their own messages and replies. Administrators can view all messages, reply, and soft-delete messages.
 
-User message routes:
-
-```text
-GET  /api/v1/messages
-POST /api/v1/messages
-```
-
-Admin-only message routes:
-
-```text
-GET    /api/v1/admin/messages
-POST   /api/v1/admin/messages/:id/reply
-DELETE /api/v1/admin/messages/:id
-```
-
-Example create message:
+Create a message:
 
 ```bash
 curl -X POST http://localhost:4000/api/v1/messages \
@@ -336,7 +409,7 @@ curl -X POST http://localhost:4000/api/v1/messages \
   }'
 ```
 
-Example admin reply:
+Admin reply:
 
 ```bash
 curl -X POST http://localhost:4000/api/v1/admin/messages/<message-id>/reply \
@@ -349,21 +422,19 @@ curl -X POST http://localhost:4000/api/v1/admin/messages/<message-id>/reply \
 
 Messages must reference an existing film. Deleted messages are soft-deleted with `status: "DELETED"` and are hidden from normal user message lists.
 
-## OpenAPI Documentation
+## Security Features
 
-Open the API documentation UI after starting the server:
-
-```text
-http://localhost:4000/api-docs
-```
-
-The raw OpenAPI 3.x JSON document is served at:
-
-```text
-http://localhost:4000/api-docs/openapi.json
-```
-
-The OpenAPI document covers health, auth, Basic Auth evidence, admin RBAC, films, OMDB import, favourites, watchlist, watched records, and messages.
+- `.env` and local database files are ignored by git.
+- JWT secret and OMDB API key are loaded from environment variables.
+- CORS is configured through `CORS_ORIGIN`.
+- Passwords are hashed with bcrypt.
+- API responses do not expose `passwordHash`.
+- Protected routes use JWT middleware.
+- Admin routes use RBAC middleware.
+- Basic Auth is isolated to the evidence endpoint.
+- Zod validates request bodies, path params, and query params.
+- Production error responses do not include stack traces.
+- Helmet is enabled.
 
 ## Testing
 
@@ -373,13 +444,13 @@ Run the Jest and Supertest suite:
 npm test
 ```
 
-Run tests in watch mode while developing:
+Run tests in watch mode:
 
 ```bash
 npm run test:watch
 ```
 
-Generate a coverage report:
+Generate coverage:
 
 ```bash
 npm run test:coverage
@@ -389,89 +460,45 @@ The test scripts run `prisma db push` against `file:./test.db` before Jest start
 
 Current test coverage includes:
 
-- Public health endpoint
-- Registration success
-- Duplicate email or username conflict
-- Login success with JWT response
-- Wrong password rejection
-- Missing token rejection
-- Invalid token rejection
-- User role blocked from admin route
-- Admin role allowed through admin route
-- Basic Auth success
-- Basic Auth missing header rejection
-- Basic Auth wrong password rejection
-- Basic Auth malformed header rejection
-- Public films browsing
-- Films title search
-- Films genre/year/rating filters
-- Films sorting and pagination support
-- Public film detail lookup
-- Film not found handling
-- Admin-only film create/update/delete authorization
-- Film request body, route param, and query validation
-- Favourites add/list/remove with JWT
-- Favourites duplicate prevention and missing-film handling
-- Watchlist add/list/remove with JWT
-- Watched add/list/remove with rating and notes validation
-- Tracking user isolation between accounts
-- Direct message create/list with JWT
-- Message missing-film and invalid-body handling
-- User message isolation between accounts
-- Admin message list/reply/delete RBAC
-- Soft-deleted messages hidden from normal user lists
-- Admin-only OMDB import with mocked external HTTP tests
-- OMDB not found and external failure handling
-- OpenAPI documentation UI and JSON availability
+- Health endpoint
+- Registration and login
+- Duplicate email/username conflict
+- JWT missing/invalid token handling
+- RBAC user/admin access checks
+- Basic Auth evidence success/failure cases
+- Public film browsing, search, filter, sort, pagination
+- Invalid film query validation
+- Film detail lookup and missing-film handling
+- Conditional film detail requests with `ETag`
+- Admin film create/update/delete authorization
+- OMDB import with mocked external HTTP responses
+- Favourites, watchlist, and watched records
+- Tracking duplicate prevention and user isolation
+- Direct messages and admin reply/delete
+- Message isolation and soft-delete behaviour
+- `passwordHash` response safety
+- OpenAPI JSON validity and key path coverage
+- Seed script documentation evidence
 
-## Phase 1 Scope
+## Current Scope
 
-Implemented in this scaffold:
+Implemented:
 
 - Express app/server separation
 - Strict TypeScript configuration
+- Prisma SQLite schema and seed data
 - Environment validation with Zod
-- JSON API defaults
 - CORS and Helmet setup
-- Central error handler
-- 404 handler
-- Prisma SQLite connection setup
-- Jest, ts-jest, and Supertest testing scaffold
-- JWT authentication and RBAC middleware
-- Auth endpoints for register and login
+- Central error and 404 handling
+- JWT authentication and RBAC
 - Basic Auth evidence endpoint
-- Admin-only RBAC verification endpoint
-- Public Film browsing and detail endpoints
-- Admin-only Film create, update, and soft-delete endpoints
-- Film search, filter, sort, pagination, validation, and HATEOAS-style links
-- Authenticated favourites, watchlist, and watched tracking endpoints
-- Tracking duplicate prevention and user-scoped records
-- Direct messages between registered users and administrators
-- Admin message reply and soft-delete handling
-- Admin-only OMDB metadata import
-- OpenAPI 3.x JSON documentation
-- API documentation UI at `/api-docs`
-- Initial database models:
-  - `User`
-  - `Film`
-  - `Favourite`
-  - `WatchlistItem`
-  - `WatchedRecord`
-  - `Message`
-- Reserved module folders for later auth, RBAC, film CRUD, favourites, watchlist, watched records, messages, OpenAPI, testing, and frontend integration
+- Public film browsing
+- Admin film CRUD and OMDB import
+- User favourites, watchlist, and watched records
+- User/admin direct messages
+- OpenAPI documentation
+- Jest and Supertest tests
 
-Not implemented yet:
+Not implemented in this backend repository:
 
 - React frontend integration
-
-## Later Coursework Phases
-
-The scaffold is prepared for:
-
-- Phase 2: Basic Auth evidence, JWT authentication, and `admin`/`user` RBAC
-- Phase 3: public safe GET film browsing plus admin CRUD
-- Phase 4: favourites, watchlist, and watched records
-- Phase 5: direct messages with admin reply/delete
-- Phase 6: OMDB metadata import and OpenAPI documentation
-- Phase 7: Jest and Supertest API endpoint tests
-- Phase 8: React TypeScript SPA integration
