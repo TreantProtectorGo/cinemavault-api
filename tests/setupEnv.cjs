@@ -6,3 +6,4 @@ process.env.JWT_SECRET = "test-secret-with-enough-length-for-jwt";
 process.env.JWT_EXPIRES_IN = "1h";
 process.env.BCRYPT_SALT_ROUNDS = "4";
 process.env.OMDB_API_KEY = "test-omdb-key";
+process.env.GOOGLE_CLIENT_ID = "test-google-client-id";

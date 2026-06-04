@@ -20,6 +20,10 @@ const envSchema = z.object({
   OMDB_API_KEY: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(1).optional()
+  ),
+  GOOGLE_CLIENT_ID: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional()
   )
 });
 

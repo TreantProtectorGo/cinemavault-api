@@ -1,6 +1,10 @@
 import request from "supertest";
 import { app } from "../src/app.js";
 import { prisma } from "../src/db/prisma.js";
+import {
+  resetGoogleCredentialVerifierForTest,
+  setGoogleCredentialVerifierForTest
+} from "../src/modules/auth/googleVerifier.js";
 
 const userPayload = {
   email: "member@example.com",
@@ -31,6 +35,7 @@ async function clearUsers() {
 
 describe("Authentication and RBAC", () => {
   beforeEach(async () => {
+    resetGoogleCredentialVerifierForTest();
     await clearUsers();
   });
 
@@ -93,6 +98,63 @@ describe("Authentication and RBAC", () => {
       role: "USER"
     });
     expect(JSON.stringify(response.body)).not.toContain("passwordHash");
+  });
+
+  it("logs in with Google OAuth as a normal user only", async () => {
+    setGoogleCredentialVerifierForTest(async () => ({
+      email: "google.member@example.com",
+      name: "Google Member",
+      picture: "https://example.com/avatar.jpg"
+    }));
+
+    const response = await request(app)
+      .post("/api/v1/auth/google")
+      .send({ credential: "valid-google-id-token" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.token).toEqual(expect.any(String));
+    expect(response.body.user).toMatchObject({
+      email: "google.member@example.com",
+      role: "USER",
+      displayName: "Google Member",
+      profilePhotoUrl: "https://example.com/avatar.jpg"
+    });
+    expect(JSON.stringify(response.body)).not.toContain("passwordHash");
+
+    const storedUser = await prisma.user.findUnique({
+      where: { email: "google.member@example.com" }
+    });
+
+    expect(storedUser?.role).toBe("USER");
+  });
+
+  it("does not allow Google OAuth to authenticate administrator accounts", async () => {
+    await request(app).post("/api/v1/auth/register").send(adminPayload);
+    setGoogleCredentialVerifierForTest(async () => ({
+      email: adminPayload.email,
+      name: "External Admin Attempt"
+    }));
+
+    const response = await request(app)
+      .post("/api/v1/auth/google")
+      .send({ credential: "valid-google-id-token" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.message).toBe(
+      "External authentication cannot be used for administrator accounts"
+    );
+  });
+
+  it("returns 401 for an invalid Google OAuth credential", async () => {
+    setGoogleCredentialVerifierForTest(async () => {
+      throw new Error("Invalid token");
+    });
+
+    const response = await request(app)
+      .post("/api/v1/auth/google")
+      .send({ credential: "invalid-google-id-token" });
+
+    expect(response.status).toBe(401);
   });
 
   it("returns 401 for a wrong password", async () => {

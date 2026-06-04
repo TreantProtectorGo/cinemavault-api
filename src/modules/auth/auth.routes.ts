@@ -1,8 +1,9 @@
 import { Router, type Response } from "express";
 import { ZodError } from "zod";
-import { loginSchema, registerSchema } from "./auth.schemas.js";
+import { googleAuthSchema, loginSchema, registerSchema } from "./auth.schemas.js";
 import {
   AuthError,
+  loginWithGoogle,
   loginUser,
   registerUser,
   verifyBasicCredentials
@@ -66,6 +67,22 @@ authRouter.post("/login", async (req, res, next) => {
   try {
     const input = loginSchema.parse(req.body);
     const result = await loginUser(input);
+
+    res.json(result);
+  } catch (error) {
+    if (error instanceof ZodError || error instanceof AuthError) {
+      next(error);
+      return;
+    }
+
+    next(error);
+  }
+});
+
+authRouter.post("/google", async (req, res, next) => {
+  try {
+    const input = googleAuthSchema.parse(req.body);
+    const result = await loginWithGoogle(input);
 
     res.json(result);
   } catch (error) {

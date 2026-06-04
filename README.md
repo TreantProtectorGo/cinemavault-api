@@ -15,6 +15,7 @@ It provides a TypeScript REST API for a secure film discovery platform with publ
 - bcrypt password hashing
 - JWT bearer authentication
 - Basic Auth evidence endpoint
+- Google OAuth public-user sign-in evidence
 - Jest + Supertest
 - OpenAPI 3.x with Redoc UI
 
@@ -23,7 +24,7 @@ It provides a TypeScript REST API for a secure film discovery platform with publ
 - TypeScript REST API: Express app in `src/`
 - JSON by default: `express.json()` and JSON API responses
 - Backend/frontend separation: this repository is backend only
-- Authentication: JWT register/login flow
+- Authentication: JWT register/login flow plus public-user Google OAuth sign-in
 - Basic Auth evidence: `GET /api/v1/auth/basic-check`
 - Authorization: RBAC middleware with `ADMIN` and `USER`
 - Public browsing: `GET /api/v1/films`, `GET /api/v1/films/:id`
@@ -32,6 +33,7 @@ It provides a TypeScript REST API for a secure film discovery platform with publ
 - Direct messages: user-to-admin messages with admin reply/delete
 - User profile: authenticated profile lookup/update and avatar upload
 - External API: admin-only OMDB import
+- External authentication: Google OAuth creates or logs in normal `USER` accounts only
 - Documentation: OpenAPI JSON and Redoc UI
 - Testing: Jest + Supertest mock HTTP request tests
 - Maintainability: modular route/schema/service structure
@@ -85,6 +87,7 @@ JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=1h
 BCRYPT_SALT_ROUNDS=12
 OMDB_API_KEY=replace-with-your-omdb-api-key
+GOOGLE_CLIENT_ID=replace-with-your-google-oauth-client-id
 ```
 
 Do not commit `.env`. It is ignored by `.gitignore`.
@@ -237,6 +240,18 @@ Authorization: Bearer <token>
 
 Passwords are hashed with bcrypt before storage. Plain text passwords and `passwordHash` are never returned by API responses.
 
+## Google OAuth Evidence
+
+Public users can also sign in with Google OAuth. The frontend sends the Google Identity Services ID token to:
+
+```text
+POST /api/v1/auth/google
+```
+
+The backend verifies the token using `GOOGLE_CLIENT_ID`, then creates or logs in a normal `USER` account and returns the same JWT response shape as normal login.
+
+Security rule: Google OAuth can never create or authenticate administrator accounts. If a Google email matches an existing `ADMIN` user, the endpoint returns `403`.
+
 ## Basic Auth Evidence
 
 The main application authentication uses JWT. Basic Auth is included only as coursework/lab evidence.
@@ -293,6 +308,7 @@ Auth:
 ```text
 POST /api/v1/auth/register
 POST /api/v1/auth/login
+POST /api/v1/auth/google
 GET  /api/v1/auth/basic-check
 ```
 

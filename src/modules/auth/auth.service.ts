@@ -1,14 +1,18 @@
 import bcrypt from "bcrypt";
+import crypto from "node:crypto";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { env } from "../../config/env.js";
 import { prisma } from "../../db/prisma.js";
-import type { LoginInput, RegisterInput } from "./auth.schemas.js";
+import type { GoogleAuthInput, LoginInput, RegisterInput } from "./auth.schemas.js";
+import { verifyGoogleCredential } from "./googleVerifier.js";
 
 type UserRecord = {
   id: string;
   email: string;
   username: string;
   role: string;
+  displayName?: string | null;
+  profilePhotoUrl?: string | null;
 };
 
 export class AuthError extends Error {
@@ -25,7 +29,9 @@ function publicUser(user: UserRecord) {
     id: user.id,
     email: user.email,
     username: user.username,
-    role: user.role
+    role: user.role,
+    displayName: user.displayName,
+    profilePhotoUrl: user.profilePhotoUrl
   };
 }
 
@@ -96,6 +102,92 @@ export async function loginUser(input: LoginInput) {
   if (!passwordMatches) {
     throw new AuthError("Invalid email/username or password", 401);
   }
+
+  return {
+    user: publicUser(user),
+    token: signToken(user)
+  };
+}
+
+async function generateUniqueUsername(email: string) {
+  const baseUsername = email
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 24) || "google-user";
+
+  let candidate = baseUsername;
+  let counter = 1;
+
+  while (await prisma.user.findUnique({ where: { username: candidate } })) {
+    counter += 1;
+    candidate = `${baseUsername.slice(0, 24)}-${counter}`;
+  }
+
+  return candidate;
+}
+
+export async function loginWithGoogle(input: GoogleAuthInput) {
+  if (!env.GOOGLE_CLIENT_ID) {
+    throw new AuthError("Google OAuth is not configured", 500);
+  }
+
+  let profile;
+
+  try {
+    profile = await verifyGoogleCredential(input.credential);
+  } catch {
+    throw new AuthError("Invalid Google credential", 401);
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: profile.email }
+  });
+
+  if (existingUser?.role.toUpperCase() === "ADMIN") {
+    throw new AuthError(
+      "External authentication cannot be used for administrator accounts",
+      403
+    );
+  }
+
+  const user = existingUser
+    ? await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          displayName: existingUser.displayName ?? profile.name,
+          profilePhotoUrl: existingUser.profilePhotoUrl ?? profile.picture
+        },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          role: true,
+          displayName: true,
+          profilePhotoUrl: true
+        }
+      })
+    : await prisma.user.create({
+        data: {
+          email: profile.email,
+          username: await generateUniqueUsername(profile.email),
+          passwordHash: await bcrypt.hash(
+            crypto.randomBytes(32).toString("hex"),
+            env.BCRYPT_SALT_ROUNDS
+          ),
+          role: "USER",
+          displayName: profile.name,
+          profilePhotoUrl: profile.picture
+        },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          role: true,
+          displayName: true,
+          profilePhotoUrl: true
+        }
+      });
 
   return {
     user: publicUser(user),

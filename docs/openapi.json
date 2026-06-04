@@ -140,6 +140,45 @@
         }
       }
     },
+    "/api/v1/auth/google": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login or register a public user with Google OAuth",
+        "description": "Verifies a Google OAuth ID token and returns the normal CinemaVault JWT response. External authentication is public-user only: it never creates administrator accounts and rejects existing administrator emails.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthGoogleRequest" },
+              "example": {
+                "credential": "google-id-token-from-google-identity-services"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Google OAuth login successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthLoginResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": {
+            "description": "External authentication cannot be used for administrator accounts",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
     "/api/v1/auth/basic-check": {
       "get": {
         "tags": ["Auth"],
@@ -787,6 +826,16 @@
         "properties": {
           "emailOrUsername": { "type": "string" },
           "password": { "type": "string" }
+        }
+      },
+      "AuthGoogleRequest": {
+        "type": "object",
+        "required": ["credential"],
+        "properties": {
+          "credential": {
+            "type": "string",
+            "description": "Google OAuth ID token returned by Google Identity Services"
+          }
         }
       },
       "AuthLoginResponse": {
