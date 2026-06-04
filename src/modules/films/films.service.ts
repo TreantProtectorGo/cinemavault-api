@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { env } from "../../config/env.js";
 import { prisma } from "../../db/prisma.js";
+import { normaliseOmdbApiKey } from "../../utils/omdb.js";
 import type {
   CreateFilmInput,
   FilmQueryInput,
@@ -199,12 +200,14 @@ function normaliseOmdbText(value: string | undefined) {
 }
 
 export async function importFilmFromOmdb(input: ImportOmdbInput) {
-  if (!env.OMDB_API_KEY) {
+  const apiKey = normaliseOmdbApiKey(env.OMDB_API_KEY);
+
+  if (!apiKey) {
     throw new FilmError("OMDB API key is not configured", 500);
   }
 
   const url = new URL("https://www.omdbapi.com/");
-  url.searchParams.set("apikey", env.OMDB_API_KEY);
+  url.searchParams.set("apikey", apiKey);
 
   if (input.imdbId) {
     url.searchParams.set("i", input.imdbId);

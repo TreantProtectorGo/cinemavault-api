@@ -1,69 +1,137 @@
 import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
+import { normaliseOmdbApiKey } from "../src/utils/omdb.js";
 
 const prisma = new PrismaClient();
 
 const adminPassword = "AdminPassword123!";
 const userPassword = "UserPassword123!";
 
-const films = [
-  {
-    title: "Inception",
-    genre: "Sci-Fi",
-    year: 2010,
-    rating: 8.8,
-    director: "Christopher Nolan",
-    cast: "Leonardo DiCaprio, Joseph Gordon-Levitt, Elliot Page",
-    plot: "A thief enters dreams to steal corporate secrets.",
-    runtime: 148,
-    language: "English",
-    country: "USA",
-    imdbId: "tt1375666",
-    isLive: true
-  },
-  {
-    title: "The Matrix",
-    genre: "Action, Sci-Fi",
-    year: 1999,
-    rating: 8.7,
-    director: "Lana Wachowski, Lilly Wachowski",
-    cast: "Keanu Reeves, Laurence Fishburne, Carrie-Anne Moss",
-    plot: "A hacker discovers the hidden truth about his reality.",
-    runtime: 136,
-    language: "English",
-    country: "USA",
-    imdbId: "tt0133093",
-    isLive: true
-  },
-  {
-    title: "Parasite",
-    genre: "Drama, Thriller",
-    year: 2019,
-    rating: 8.5,
-    director: "Bong Joon Ho",
-    cast: "Song Kang-ho, Lee Sun-kyun, Cho Yeo-jeong",
-    plot: "Class tension escalates when two families become entangled.",
-    runtime: 132,
-    language: "Korean",
-    country: "South Korea",
-    imdbId: "tt6751668",
-    isLive: true
-  },
-  {
-    title: "Spirited Away",
-    genre: "Animation, Adventure",
-    year: 2001,
-    rating: 8.6,
-    director: "Hayao Miyazaki",
-    cast: "Rumi Hiiragi, Miyu Irino, Mari Natsuki",
-    plot: "A young girl enters a mysterious spirit world.",
-    runtime: 125,
-    language: "Japanese",
-    country: "Japan",
-    imdbId: "tt0245429",
-    isLive: true
-  }
+const seedFilmImdbIds = [
+  "tt1375666",
+  "tt0133093",
+  "tt6751668",
+  "tt0245429",
+  "tt0816692",
+  "tt0468569",
+  "tt6710474",
+  "tt15239678",
+  "tt0111161",
+  "tt0110912",
+  "tt0109830",
+  "tt0137523",
+  "tt0099685",
+  "tt0114369",
+  "tt0102926",
+  "tt0172495",
+  "tt0120737",
+  "tt0167261",
+  "tt0167260",
+  "tt0076759",
+  "tt1856101",
+  "tt1392190",
+  "tt3783958",
+  "tt5052448"
 ];
+
+type OmdbFilmResponse = {
+  Response?: string;
+  Error?: string;
+  Title?: string;
+  Year?: string;
+  Genre?: string;
+  Director?: string;
+  Actors?: string;
+  Plot?: string;
+  Poster?: string;
+  Runtime?: string;
+  Language?: string;
+  Country?: string;
+  imdbID?: string;
+  imdbRating?: string;
+  [key: string]: unknown;
+};
+
+function parseYear(value: string | undefined) {
+  const match = value?.match(/\d{4}/);
+
+  return match ? Number(match[0]) : undefined;
+}
+
+function parseRuntime(value: string | undefined) {
+  const match = value?.match(/\d+/);
+
+  return match ? Number(match[0]) : undefined;
+}
+
+function parseRating(value: string | undefined) {
+  const rating = Number(value);
+
+  return Number.isFinite(rating) ? rating : undefined;
+}
+
+function normaliseOmdbText(value: string | undefined) {
+  return value && value !== "N/A" ? value : undefined;
+}
+
+function mapOmdbFilm(omdbFilm: OmdbFilmResponse, imdbId: string) {
+  if (!omdbFilm.Title) {
+    throw new Error(`OMDB response for ${imdbId} did not include a title`);
+  }
+
+  return {
+    title: omdbFilm.Title,
+    genre: normaliseOmdbText(omdbFilm.Genre),
+    year: parseYear(omdbFilm.Year),
+    rating: parseRating(omdbFilm.imdbRating),
+    director: normaliseOmdbText(omdbFilm.Director),
+    cast: normaliseOmdbText(omdbFilm.Actors),
+    plot: normaliseOmdbText(omdbFilm.Plot),
+    posterUrl: normaliseOmdbText(omdbFilm.Poster),
+    runtime: parseRuntime(omdbFilm.Runtime),
+    language: normaliseOmdbText(omdbFilm.Language),
+    country: normaliseOmdbText(omdbFilm.Country),
+    imdbId: normaliseOmdbText(omdbFilm.imdbID) ?? imdbId,
+    omdbMetadataJson: JSON.stringify(omdbFilm),
+    isLive: true
+  };
+}
+
+async function fetchOmdbFilm(imdbId: string) {
+  const apiKey = normaliseOmdbApiKey(process.env.OMDB_API_KEY);
+
+  if (!apiKey) {
+    throw new Error("OMDB_API_KEY is required to seed films from OMDB");
+  }
+
+  const url = new URL("https://www.omdbapi.com/");
+  url.searchParams.set("apikey", apiKey);
+  url.searchParams.set("i", imdbId);
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`OMDB request failed for ${imdbId} with HTTP ${response.status}`);
+  }
+
+  const omdbFilm = (await response.json()) as OmdbFilmResponse;
+
+  if (omdbFilm.Response === "False") {
+    throw new Error(`OMDB did not return ${imdbId}: ${omdbFilm.Error ?? "unknown error"}`);
+  }
+
+  return mapOmdbFilm(omdbFilm, imdbId);
+}
+
+async function seedFilmFromOmdb(imdbId: string) {
+  const film = await fetchOmdbFilm(imdbId);
+
+  return prisma.film.upsert({
+    where: { imdbId },
+    update: film,
+    create: film
+  });
+}
 
 async function main() {
   const [adminPasswordHash, userPasswordHash] = await Promise.all([
@@ -107,14 +175,8 @@ async function main() {
 
   const seededFilms = [];
 
-  for (const film of films) {
-    seededFilms.push(
-      await prisma.film.upsert({
-        where: { imdbId: film.imdbId },
-        update: film,
-        create: film
-      })
-    );
+  for (const imdbId of seedFilmImdbIds) {
+    seededFilms.push(await seedFilmFromOmdb(imdbId));
   }
 
   await prisma.favourite.upsert({
