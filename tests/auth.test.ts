@@ -5,6 +5,7 @@ import {
   resetGoogleCredentialVerifierForTest,
   setGoogleCredentialVerifierForTest
 } from "../src/modules/auth/googleVerifier.js";
+import { createAdminAndGetToken } from "./testUtils.js";
 
 const userPayload = {
   email: "member@example.com",
@@ -17,8 +18,7 @@ const adminPayload = {
   email: "admin@example.com",
   username: "admin",
   password: "AdminPassword123!",
-  displayName: "Cinema Admin",
-  role: "ADMIN"
+  displayName: "Cinema Admin"
 };
 
 function basicCredentials(identifier: string, password: string) {
@@ -64,6 +64,21 @@ describe("Authentication and RBAC", () => {
 
     expect(storedUser?.passwordHash).toEqual(expect.any(String));
     expect(storedUser?.passwordHash).not.toBe(userPayload.password);
+  });
+
+  it("always registers public accounts as USER even if role is submitted", async () => {
+    const response = await request(app)
+      .post("/api/v1/auth/register")
+      .send({ ...userPayload, role: "ADMIN" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.user.role).toBe("USER");
+
+    const storedUser = await prisma.user.findUnique({
+      where: { email: userPayload.email }
+    });
+
+    expect(storedUser?.role).toBe("USER");
   });
 
   it("returns conflict when email or username already exists", async () => {
@@ -129,7 +144,7 @@ describe("Authentication and RBAC", () => {
   });
 
   it("does not allow Google OAuth to authenticate administrator accounts", async () => {
-    await request(app).post("/api/v1/auth/register").send(adminPayload);
+    await createAdminAndGetToken(adminPayload);
     setGoogleCredentialVerifierForTest(async () => ({
       email: adminPayload.email,
       name: "External Admin Attempt"
@@ -195,13 +210,11 @@ describe("Authentication and RBAC", () => {
   });
 
   it("returns 200 when an admin role accesses the admin route", async () => {
-    const registerResponse = await request(app)
-      .post("/api/v1/auth/register")
-      .send(adminPayload);
+    const adminToken = await createAdminAndGetToken(adminPayload);
 
     const response = await request(app)
       .get("/api/v1/admin/ping")
-      .set("Authorization", `Bearer ${registerResponse.body.token}`);
+      .set("Authorization", `Bearer ${adminToken}`);
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({

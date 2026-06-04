@@ -2,12 +2,12 @@ import { jest } from "@jest/globals";
 import request from "supertest";
 import { app } from "../src/app.js";
 import { prisma } from "../src/db/prisma.js";
+import { createAdminAndGetToken, registerUserAndGetToken } from "./testUtils.js";
 
 const adminPayload = {
   email: "omdb-admin@example.com",
   username: "omdbadmin",
-  password: "AdminPassword123!",
-  role: "ADMIN"
+  password: "AdminPassword123!"
 };
 
 const userPayload = {
@@ -41,12 +41,6 @@ async function clearDatabase() {
   await prisma.user.deleteMany();
 }
 
-async function registerAndGetToken(payload: Record<string, unknown>) {
-  const response = await request(app).post("/api/v1/auth/register").send(payload);
-
-  return response.body.token as string;
-}
-
 function mockOmdbJson(body: Record<string, unknown>, status = 200) {
   return Promise.resolve(
     new Response(JSON.stringify(body), {
@@ -67,8 +61,8 @@ describe("OMDB film import", () => {
     await clearDatabase();
     fetchMock.mockReset();
 
-    adminToken = await registerAndGetToken(adminPayload);
-    userToken = await registerAndGetToken(userPayload);
+    adminToken = await createAdminAndGetToken(adminPayload);
+    userToken = await registerUserAndGetToken(userPayload);
   });
 
   afterAll(async () => {

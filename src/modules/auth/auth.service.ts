@@ -68,7 +68,7 @@ export async function registerUser(input: RegisterInput) {
       email: input.email,
       username: input.username,
       passwordHash,
-      role: input.role,
+      role: "USER",
       displayName: input.displayName
     },
     select: {

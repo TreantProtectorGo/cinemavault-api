@@ -1,12 +1,12 @@
 import request from "supertest";
 import { app } from "../src/app.js";
 import { prisma } from "../src/db/prisma.js";
+import { createAdminAndGetToken, registerUserAndGetToken } from "./testUtils.js";
 
 const adminPayload = {
   email: "tracking-admin@example.com",
   username: "trackingadmin",
-  password: "AdminPassword123!",
-  role: "ADMIN"
+  password: "AdminPassword123!"
 };
 
 const userAPayload = {
@@ -45,12 +45,6 @@ async function clearDatabase() {
   await prisma.user.deleteMany();
 }
 
-async function registerAndGetToken(payload: Record<string, unknown>) {
-  const response = await request(app).post("/api/v1/auth/register").send(payload);
-
-  return response.body.token as string;
-}
-
 async function createFilm(token: string) {
   const response = await request(app)
     .post("/api/v1/films")
@@ -69,9 +63,9 @@ describe("Tracking API", () => {
   beforeEach(async () => {
     await clearDatabase();
 
-    adminToken = await registerAndGetToken(adminPayload);
-    userAToken = await registerAndGetToken(userAPayload);
-    userBToken = await registerAndGetToken(userBPayload);
+    adminToken = await createAdminAndGetToken(adminPayload);
+    userAToken = await registerUserAndGetToken(userAPayload);
+    userBToken = await registerUserAndGetToken(userBPayload);
     filmId = (await createFilm(adminToken)).id;
   });
 

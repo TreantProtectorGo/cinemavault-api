@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-const roleSchema = z
-  .enum(["admin", "user", "ADMIN", "USER"])
-  .transform((role) => role.toUpperCase());
-
 export const registerSchema = z.object({
   email: z.string().email().trim().toLowerCase(),
   username: z
@@ -13,8 +9,7 @@ export const registerSchema = z.object({
     .max(30)
     .regex(/^[a-zA-Z0-9_-]+$/, "Username may only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8).max(128),
-  displayName: z.string().trim().min(1).max(80).optional(),
-  role: roleSchema.default("USER")
+  displayName: z.string().trim().min(1).max(80).optional()
 });
 
 export const loginSchema = z.object({

@@ -79,7 +79,8 @@
     "/api/v1/auth/register": {
       "post": {
         "tags": ["Auth"],
-        "summary": "Register a user or admin",
+        "summary": "Register a public user",
+        "description": "Public registration always creates a normal USER account. Administrator accounts are provisioned internally and cannot be created through this endpoint.",
         "requestBody": {
           "required": true,
           "content": {
@@ -815,9 +816,7 @@
           "email": { "type": "string", "format": "email" },
           "username": { "type": "string", "minLength": 3 },
           "password": { "type": "string", "minLength": 8 },
-          "displayName": { "type": "string" },
-          "profilePhotoUrl": { "type": "string", "format": "uri" },
-          "role": { "type": "string", "enum": ["USER", "ADMIN"] }
+          "displayName": { "type": "string" }
         }
       },
       "AuthLoginRequest": {

@@ -208,18 +208,7 @@ curl -X POST http://localhost:4000/api/v1/auth/register \
   }'
 ```
 
-Register an admin for RBAC verification:
-
-```bash
-curl -X POST http://localhost:4000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "username": "admin",
-    "password": "AdminPassword123!",
-    "role": "ADMIN"
-  }'
-```
+Public registration always creates a normal `USER` account. Administrator accounts are provisioned internally through the seed script or direct controlled database setup, never through the public register endpoint.
 
 Login:
 
