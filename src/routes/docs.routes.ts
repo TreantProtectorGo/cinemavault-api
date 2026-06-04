@@ -1,32 +1,49 @@
 import { readFileSync } from "node:fs";
 import { Router } from "express";
+import helmet from "helmet";
+import swaggerUi, { type JsonObject, type SwaggerUiOptions } from "swagger-ui-express";
 
 const openApiSpecPath = new URL("../../docs/openapi.json", import.meta.url);
-const openApiSpec = JSON.parse(readFileSync(openApiSpecPath, "utf8")) as unknown;
+const openApiSpec = JSON.parse(readFileSync(openApiSpecPath, "utf8")) as JsonObject;
 
 export const docsRouter = Router();
+
+const docsContentSecurityPolicy = helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    baseUri: ["'self'"],
+    connectSrc: ["'self'"],
+    fontSrc: ["'self'", "data:"],
+    imgSrc: ["'self'", "data:"],
+    objectSrc: ["'none'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    styleSrc: ["'self'", "'unsafe-inline'"]
+  }
+});
+
+docsRouter.use(docsContentSecurityPolicy);
 
 docsRouter.get("/openapi.json", (_req, res) => {
   res.json(openApiSpec);
 });
 
+const swaggerUiOptions: SwaggerUiOptions = {
+  customSiteTitle: "CinemaVault API Documentation",
+  customCss: `
+      .swagger-ui .topbar { display: none; }
+      .swagger-ui .info { margin: 32px 0; }
+    `,
+  swaggerOptions: {
+    persistAuthorization: true
+  }
+};
+
+const swaggerHtml = swaggerUi
+  .generateHTML(openApiSpec, swaggerUiOptions)
+  .replaceAll('href="./', 'href="/api-docs/')
+  .replaceAll('src="./', 'src="/api-docs/');
+
 docsRouter.get("/", (_req, res) => {
-  res.type("html").send(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>CinemaVault API Documentation</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      body { margin: 0; font-family: Arial, sans-serif; }
-      header { padding: 16px 24px; border-bottom: 1px solid #ddd; }
-      h1 { margin: 0; font-size: 20px; }
-    </style>
-  </head>
-  <body>
-    <header><h1>CinemaVault API Documentation</h1></header>
-    <redoc spec-url="/api-docs/openapi.json"></redoc>
-    <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
-  </body>
-</html>`);
+  res.type("html").send(swaggerHtml);
 });
+docsRouter.use("/", swaggerUi.serveFiles(openApiSpec, swaggerUiOptions));

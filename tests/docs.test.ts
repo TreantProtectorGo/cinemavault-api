@@ -14,6 +14,32 @@ describe("API documentation", () => {
     expect(response.status).toBe(200);
     expect(response.type).toContain("html");
     expect(response.text).toContain("CinemaVault API Documentation");
+    expect(response.text).toContain("swagger-ui");
+    expect(response.text).toContain("/api-docs/swagger-ui.css");
+    expect(response.text).toContain("/api-docs/swagger-ui-bundle.js");
+    expect(response.text).toContain("/api-docs/swagger-ui-init.js");
+    expect(response.text).not.toContain("./swagger-ui.css");
+    expect(response.text).not.toContain("./swagger-ui-bundle.js");
+    expect(response.text).not.toContain("cdn.jsdelivr.net");
+    expect(response.headers["content-security-policy"]).toContain(
+      "script-src 'self' 'unsafe-inline'"
+    );
+  });
+
+  it("serves Swagger UI assets locally", async () => {
+    const response = await request(app).get("/api-docs/swagger-ui-bundle.js");
+
+    expect(response.status).toBe(200);
+    expect(response.type).toContain("javascript");
+  });
+
+  it("initializes Swagger UI with the documented OpenAPI paths", async () => {
+    const response = await request(app).get("/api-docs/swagger-ui-init.js");
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("CinemaVault API");
+    expect(response.text).toContain("/api/v1/films");
+    expect(response.text).toContain("/api/v1/messages");
   });
 
   it("serves the OpenAPI JSON document", async () => {
