@@ -166,5 +166,6 @@ describe("Current user profile", () => {
 
     const staticResponse = await request(app).get(response.body.profilePhotoUrl);
     expect(staticResponse.status).toBe(200);
+    expect(staticResponse.headers["cross-origin-resource-policy"]).toBe("cross-origin");
   });
 });

@@ -25,7 +25,14 @@ const avatarDirectory = path.resolve(process.cwd(), "uploads", "avatars");
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use("/uploads/avatars", express.static(avatarDirectory));
+app.use(
+  "/uploads/avatars",
+  (_req, res, next) => {
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+  },
+  express.static(avatarDirectory)
+);
 
 app.use("/api/v1/health", healthRouter);
 app.use("/health", healthRouter);
