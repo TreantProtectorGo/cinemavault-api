@@ -202,13 +202,13 @@ async function main() {
     },
     update: {
       status: "PLANNED",
-      notes: "Demo watchlist record"
+      notes: "Planning to watch this during the weekend."
     },
     create: {
       userId: user.id,
       filmId: seededFilms[1].id,
       status: "PLANNED",
-      notes: "Demo watchlist record"
+      notes: "Planning to watch this during the weekend."
     }
   });
 
@@ -221,36 +221,51 @@ async function main() {
     },
     update: {
       rating: 9,
-      reviewNote: "Excellent demo watched record."
+      reviewNote: "A strong recommendation from the catalogue."
     },
     create: {
       userId: user.id,
       filmId: seededFilms[2].id,
       rating: 9,
-      reviewNote: "Excellent demo watched record."
+      reviewNote: "A strong recommendation from the catalogue."
     }
   });
+
+  const messageFilm =
+    seededFilms.find((film) => film.imdbId === "tt0245429" || film.title === "Spirited Away") ??
+    seededFilms[3];
+
+  const seededMessageData = {
+    userId: user.id,
+    filmId: messageFilm.id,
+    adminId: admin.id,
+    subject: "Question about Spirited Away availability",
+    body: "Could you confirm whether Spirited Away will remain available this week?",
+    replyBody: "Yes, this film is currently available in the catalogue.",
+    status: "REPLIED" as const,
+    repliedAt: new Date(),
+    deletedAt: null
+  };
 
   const existingMessage = await prisma.message.findFirst({
     where: {
       userId: user.id,
-      filmId: seededFilms[3].id,
-      subject: "Demo message"
+      filmId: messageFilm.id,
+      OR: [
+        { subject: "Question about Spirited Away availability" },
+        { subject: "Demo message" }
+      ]
     }
   });
 
-  if (!existingMessage) {
+  if (existingMessage) {
+    await prisma.message.update({
+      where: { id: existingMessage.id },
+      data: seededMessageData
+    });
+  } else {
     await prisma.message.create({
-      data: {
-        userId: user.id,
-        filmId: seededFilms[3].id,
-        adminId: admin.id,
-        subject: "Demo message",
-        body: "Could you confirm whether this film will remain available this week?",
-        replyBody: "Yes, this film is currently available.",
-        status: "REPLIED",
-        repliedAt: new Date()
-      }
+      data: seededMessageData
     });
   }
 
