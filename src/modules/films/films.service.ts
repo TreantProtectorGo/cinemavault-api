@@ -92,7 +92,9 @@ function buildWhere(query: FilmQueryInput): Prisma.FilmWhereInput {
   }
 
   if (query.rating !== undefined) {
-    where.rating = query.rating;
+    where.rating = {
+      gte: query.rating
+    };
   }
 
   return where;

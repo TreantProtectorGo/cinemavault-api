@@ -150,6 +150,20 @@ describe("Films API", () => {
     expect(response.body.data[0].year).toBe(2008);
   });
 
+  it("public GET /api/v1/films supports minimum rating filter", async () => {
+    await createFilm(adminToken, inceptionPayload);
+    await createFilm(adminToken, batmanPayload);
+    await createFilm(adminToken, hiddenPayload);
+
+    const response = await request(app).get("/api/v1/films?rating=8.8");
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.map((film: { title: string }) => film.title)).toEqual([
+      "Inception",
+      "Batman: The Dark Knight"
+    ]);
+  });
+
   it("public GET /api/v1/films supports sorting", async () => {
     await createFilm(adminToken, inceptionPayload);
     await createFilm(adminToken, batmanPayload);
