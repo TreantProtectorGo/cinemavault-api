@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import path from "node:path";
 import { corsOptions } from "./config/cors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { notFoundHandler } from "./middleware/notFound.js";
@@ -11,6 +12,7 @@ import {
   adminMessagesRouter,
   messagesRouter
 } from "./modules/messages/messages.routes.js";
+import { profileRouter } from "./modules/profile/profile.routes.js";
 import { watchedRouter } from "./modules/watched/watched.routes.js";
 import { watchlistRouter } from "./modules/watchlist/watchlist.routes.js";
 import { adminRouter } from "./routes/admin.routes.js";
@@ -18,14 +20,17 @@ import { docsRouter } from "./routes/docs.routes.js";
 import { healthRouter } from "./routes/health.routes.js";
 
 export const app = express();
+const avatarDirectory = path.resolve(process.cwd(), "uploads", "avatars");
 
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use("/uploads/avatars", express.static(avatarDirectory));
 
 app.use("/api/v1/health", healthRouter);
 app.use("/health", healthRouter);
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/me", profileRouter);
 app.use("/api/v1/films", filmsRouter);
 app.use("/api/v1/favourites", favouritesRouter);
 app.use("/api/v1/watchlist", watchlistRouter);

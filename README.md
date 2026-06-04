@@ -2,7 +2,7 @@
 
 CinemaVault is the backend repository for the Coventry University 6003CEM Web API Development CW2 project.
 
-It provides a TypeScript REST API for a secure film discovery platform with public film browsing, JWT authentication, role-based admin controls, user tracking features, direct messages, OMDB metadata import, OpenAPI documentation, and automated Jest/Supertest coverage.
+It provides a TypeScript REST API for a secure film discovery platform with public film browsing, JWT authentication, role-based admin controls, user tracking features, direct messages, profile photo upload, OMDB metadata import, OpenAPI documentation, and automated Jest/Supertest coverage.
 
 ## Tech Stack
 
@@ -30,6 +30,7 @@ It provides a TypeScript REST API for a secure film discovery platform with publ
 - Admin film management: `POST`, `PUT`, `DELETE /api/v1/films`
 - User features: favourites, watchlist, watched records
 - Direct messages: user-to-admin messages with admin reply/delete
+- User profile: authenticated profile lookup/update and avatar upload
 - External API: admin-only OMDB import
 - Documentation: OpenAPI JSON and Redoc UI
 - Testing: Jest + Supertest mock HTTP request tests
@@ -247,6 +248,38 @@ curl http://localhost:4000/api/v1/auth/basic-check \
 
 The endpoint accepts `username:password` or `email:password`, checks the password against the stored bcrypt hash, and returns only public user fields.
 
+## User Profile And Photo Upload
+
+Profile routes require JWT and only operate on the authenticated user. They never return `passwordHash` and do not allow role changes.
+
+Get current profile:
+
+```bash
+curl http://localhost:4000/api/v1/me \
+  -H "Authorization: Bearer <user-token>"
+```
+
+Update safe profile fields:
+
+```bash
+curl -X PUT http://localhost:4000/api/v1/me \
+  -H "Authorization: Bearer <user-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Cinema Member"
+  }'
+```
+
+Upload profile photo:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/me/profile-photo \
+  -H "Authorization: Bearer <user-token>" \
+  -F "profilePhoto=@/path/to/avatar.png"
+```
+
+Accepted avatar types are `image/jpeg`, `image/png`, and `image/webp`. The maximum upload size is 2MB. Uploaded avatars are stored under `uploads/avatars/`, served from `/uploads/avatars/<filename>`, and ignored by git except for `.gitkeep` placeholders.
+
 ## Endpoint Overview
 
 Health:
@@ -261,6 +294,14 @@ Auth:
 POST /api/v1/auth/register
 POST /api/v1/auth/login
 GET  /api/v1/auth/basic-check
+```
+
+Profile:
+
+```text
+GET  /api/v1/me
+PUT  /api/v1/me
+POST /api/v1/me/profile-photo
 ```
 
 Admin:
@@ -429,6 +470,7 @@ Messages must reference an existing film. Deleted messages are soft-deleted with
 - CORS is configured through `CORS_ORIGIN`.
 - Passwords are hashed with bcrypt.
 - API responses do not expose `passwordHash`.
+- Profile photo uploads are authenticated, type-limited, size-limited, and stored outside committed source files.
 - Protected routes use JWT middleware.
 - Admin routes use RBAC middleware.
 - Basic Auth is isolated to the evidence endpoint.
@@ -476,6 +518,8 @@ Current test coverage includes:
 - Tracking duplicate prevention and user isolation
 - Direct messages and admin reply/delete
 - Message isolation and soft-delete behaviour
+- Current user profile lookup/update
+- Profile photo upload success and invalid file rejection
 - `passwordHash` response safety
 - OpenAPI JSON validity and key path coverage
 - Seed script documentation evidence
@@ -496,6 +540,7 @@ Implemented:
 - Admin film CRUD and OMDB import
 - User favourites, watchlist, and watched records
 - User/admin direct messages
+- Authenticated user profile and profile photo upload
 - OpenAPI documentation
 - Jest and Supertest tests
 

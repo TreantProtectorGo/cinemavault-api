@@ -22,6 +22,12 @@ prisma/*.db-journal
 src/generated/
 generated/
 
+uploads/*
+!uploads/.gitkeep
+!uploads/avatars/
+uploads/avatars/*
+!uploads/avatars/.gitkeep
+
 .DS_Store
 docs/*
 !docs/openapi.json

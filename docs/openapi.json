@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "CinemaVault API",
-    "version": "0.6.0",
-    "description": "Secure film discovery REST API for Coventry University 6003CEM CW2. It includes JWT authentication, RBAC, Basic Auth evidence, public film browsing, tracking records, direct messages, OMDB import, and OpenAPI documentation.",
+    "version": "0.7.0",
+    "description": "Secure film discovery REST API for Coventry University 6003CEM CW2. It includes JWT authentication, RBAC, Basic Auth evidence, public film browsing, tracking records, direct messages, OMDB import, profile photo upload, and OpenAPI documentation.",
     "contact": {
       "name": "CinemaVault coursework maintainer",
       "email": "placeholder@example.com"
@@ -18,6 +18,7 @@
   "tags": [
     { "name": "Health" },
     { "name": "Auth" },
+    { "name": "Profile" },
     { "name": "Admin" },
     { "name": "Films" },
     { "name": "Favourites" },
@@ -163,6 +164,71 @@
             }
           },
           "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": ["Profile"],
+        "summary": "Return the authenticated user's public profile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/UserPublicResponse" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "put": {
+        "tags": ["Profile"],
+        "summary": "Update safe authenticated user profile fields",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfileUpdateRequest" },
+              "example": {
+                "displayName": "Cinema Member",
+                "profilePhotoUrl": "https://example.com/avatar.png"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/UserPublicResponse" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/api/v1/me/profile-photo": {
+      "post": {
+        "tags": ["Profile"],
+        "summary": "Upload a profile photo for the authenticated user",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/ProfilePhotoUploadRequest" },
+              "encoding": {
+                "profilePhoto": {
+                  "contentType": "image/jpeg, image/png, image/webp"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/UserPublicResponse" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
           "500": { "$ref": "#/components/responses/InternalServerError" }
         }
       }
@@ -649,6 +715,10 @@
         "description": "External OMDB API failed",
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
       },
+      "UserPublicResponse": {
+        "description": "Public user profile response",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserPublic" } } }
+      },
       "FilmResponse": {
         "description": "Film response",
         "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Film" } } }
@@ -725,6 +795,31 @@
         "properties": {
           "user": { "$ref": "#/components/schemas/UserPublic" },
           "token": { "type": "string" }
+        }
+      },
+      "ProfileUpdateRequest": {
+        "type": "object",
+        "description": "Any non-empty subset of safe profile fields. Role and password fields are not accepted.",
+        "additionalProperties": false,
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "username": { "type": "string", "minLength": 3, "maxLength": 30 },
+          "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "profilePhotoUrl": {
+            "type": "string",
+            "description": "Absolute URL or uploaded avatar path such as /uploads/avatars/avatar.png"
+          }
+        }
+      },
+      "ProfilePhotoUploadRequest": {
+        "type": "object",
+        "required": ["profilePhoto"],
+        "properties": {
+          "profilePhoto": {
+            "type": "string",
+            "format": "binary",
+            "description": "JPEG, PNG, or WEBP image. Maximum size is 2MB."
+          }
         }
       },
       "Film": {
