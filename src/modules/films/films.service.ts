@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { env } from "../../config/env.js";
 import { prisma } from "../../db/prisma.js";
+import { publishFilmMadeLive } from "../social/socialPublisher.js";
 import { normaliseOmdbApiKey } from "../../utils/omdb.js";
 import type {
   CreateFilmInput,
@@ -148,6 +149,10 @@ export async function createFilm(input: CreateFilmInput) {
       data: input
     });
 
+    if (film.isLive) {
+      await publishFilmMadeLive(film);
+    }
+
     return formatFilm(film);
   } catch (error) {
     if (
@@ -263,6 +268,13 @@ export async function importFilmFromOmdb(input: ImportOmdbInput) {
   };
 
   try {
+    const previousFilm = filmData.imdbId
+      ? await prisma.film.findUnique({
+          where: {
+            imdbId: filmData.imdbId
+          }
+        })
+      : null;
     const film = filmData.imdbId
       ? await prisma.film.upsert({
           where: {
@@ -274,6 +286,10 @@ export async function importFilmFromOmdb(input: ImportOmdbInput) {
       : await prisma.film.create({
           data: filmData
         });
+
+    if (!previousFilm?.isLive && film.isLive) {
+      await publishFilmMadeLive(film);
+    }
 
     return formatFilm(film);
   } catch (error) {
@@ -290,13 +306,33 @@ export async function importFilmFromOmdb(input: ImportOmdbInput) {
 
 export async function updateFilm(id: string, input: UpdateFilmInput) {
   try {
-    const film = await prisma.film.update({
-      where: { id },
-      data: input
+    const [previousFilm, film] = await prisma.$transaction(async (tx) => {
+      const existingFilm = await tx.film.findUnique({
+        where: { id }
+      });
+
+      if (!existingFilm) {
+        throw new FilmError("Film not found", 404);
+      }
+
+      const updatedFilm = await tx.film.update({
+        where: { id },
+        data: input
+      });
+
+      return [existingFilm, updatedFilm];
     });
+
+    if (!previousFilm.isLive && film.isLive) {
+      await publishFilmMadeLive(film);
+    }
 
     return formatFilm(film);
   } catch (error) {
+    if (error instanceof FilmError) {
+      throw error;
+    }
+
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2025"

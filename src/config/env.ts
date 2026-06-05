@@ -24,6 +24,14 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().min(1).optional()
+  ),
+  SOCIAL_POST_ENABLED: z.preprocess(
+    (value) => value === "true" || value === true,
+    z.boolean().default(false)
+  ),
+  SOCIAL_WEBHOOK_URL: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().url().optional()
   )
 });
 

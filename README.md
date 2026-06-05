@@ -34,6 +34,7 @@ It provides a TypeScript REST API for a secure film discovery platform with publ
 - User profile: authenticated profile lookup/update and avatar upload
 - External API: admin-only OMDB import
 - External authentication: Google OAuth creates or logs in normal `USER` accounts only
+- Social feed automation: films made live can publish a configured admin social feed webhook
 - Documentation: OpenAPI JSON and Redoc UI
 - Testing: Jest + Supertest mock HTTP request tests
 - Maintainability: modular route/schema/service structure
@@ -88,6 +89,8 @@ JWT_EXPIRES_IN=1h
 BCRYPT_SALT_ROUNDS=12
 OMDB_API_KEY=replace-with-your-omdb-api-key
 GOOGLE_CLIENT_ID=replace-with-your-google-oauth-client-id
+SOCIAL_POST_ENABLED=false
+SOCIAL_WEBHOOK_URL=https://discord.com/api/webhooks/replace-with-your-discord-webhook
 ```
 
 Do not commit `.env`. It is ignored by `.gitignore`.
@@ -412,6 +415,25 @@ curl -X POST http://localhost:4000/api/v1/films/import-omdb \
 ```
 
 You may send either `imdbId` or `title`. The API maps useful OMDB fields into the `Film` model and stores the raw response in `omdbMetadataJson`.
+
+## Admin Social Feed Automation
+
+When an admin creates a film as live, or changes an existing draft film to live, the API triggers a social feed publisher with basic film details.
+
+This integration is configurable and safe for coursework/demo use:
+
+```env
+SOCIAL_POST_ENABLED=true
+SOCIAL_WEBHOOK_URL=https://discord.com/api/webhooks/replace-with-your-discord-webhook
+```
+
+The webhook request is Discord-compatible and sends the film announcement as `content` plus a small embed. Example generated message:
+
+```text
+New film is now live: Inception | (2010) | Genre: Sci-Fi | IMDb 8.8
+```
+
+If social posting is disabled or the webhook fails, the film publish action still succeeds. This prevents an external social platform outage from breaking the core catalogue workflow.
 
 ## Tracking Features
 

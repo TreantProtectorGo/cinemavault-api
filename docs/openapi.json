@@ -324,6 +324,7 @@
       "post": {
         "tags": ["Films"],
         "summary": "Create a film manually",
+        "description": "Creates a film record. If the new film is created with isLive=true, the API triggers the configured administrator social feed publisher with basic film details.",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -355,6 +356,7 @@
       "post": {
         "tags": ["Films"],
         "summary": "Import or update a film from OMDB",
+        "description": "Imports film metadata from OMDB and creates or updates the local Film record. Imported films are made live by default; if this makes a new or draft film live, the API triggers the configured administrator social feed publisher.",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -416,6 +418,7 @@
       "put": {
         "tags": ["Films"],
         "summary": "Update a film",
+        "description": "Updates a film record. If this changes isLive from false to true, the API triggers the configured administrator social feed publisher with basic film details.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "$ref": "#/components/parameters/FilmId" }],
         "requestBody": {

@@ -1,6 +1,11 @@
 import request from "supertest";
 import { app } from "../src/app.js";
 import { prisma } from "../src/db/prisma.js";
+import {
+  resetSocialPublisherForTest,
+  setSocialPublisherForTest,
+  type SocialPostPayload
+} from "../src/modules/social/socialPublisher.js";
 import { createAdminAndGetToken, registerUserAndGetToken } from "./testUtils.js";
 
 const adminPayload = {
@@ -86,6 +91,7 @@ describe("Films API", () => {
   let userToken: string;
 
   beforeEach(async () => {
+    resetSocialPublisherForTest();
     await clearDatabase();
     adminToken = await createAdminAndGetToken(adminPayload);
     userToken = await registerUserAndGetToken(userPayload);
@@ -256,6 +262,31 @@ describe("Films API", () => {
     });
   });
 
+  it("posts social feed message when an admin creates a live film", async () => {
+    const socialPosts: SocialPostPayload[] = [];
+    setSocialPublisherForTest(async (payload) => {
+      socialPosts.push(payload);
+    });
+
+    const response = await request(app)
+      .post("/api/v1/films")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send(inceptionPayload);
+
+    expect(response.status).toBe(201);
+    expect(socialPosts).toHaveLength(1);
+    expect(socialPosts[0]).toMatchObject({
+      event: "FILM_MADE_LIVE",
+      film: {
+        title: "Inception",
+        year: 2010,
+        genre: "Sci-Fi",
+        rating: 8.8
+      }
+    });
+    expect(socialPosts[0].message).toContain("New film is now live: Inception");
+  });
+
   it("POST /api/v1/films with invalid body returns 400", async () => {
     const response = await request(app)
       .post("/api/v1/films")
@@ -281,6 +312,34 @@ describe("Films API", () => {
       id: film.id,
       title: "Inception: Restored",
       rating: 8.9
+    });
+  });
+
+  it("posts social feed message only when a draft film is made live", async () => {
+    const socialPosts: SocialPostPayload[] = [];
+    setSocialPublisherForTest(async (payload) => {
+      socialPosts.push(payload);
+    });
+    const film = await createFilm(adminToken, hiddenPayload);
+
+    const publishResponse = await request(app)
+      .put(`/api/v1/films/${film.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isLive: true });
+    const titleUpdateResponse = await request(app)
+      .put(`/api/v1/films/${film.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ title: "Hidden Archive Film Restored" });
+
+    expect(publishResponse.status).toBe(200);
+    expect(titleUpdateResponse.status).toBe(200);
+    expect(socialPosts).toHaveLength(1);
+    expect(socialPosts[0]).toMatchObject({
+      event: "FILM_MADE_LIVE",
+      film: {
+        id: film.id,
+        title: "Hidden Archive Film"
+      }
     });
   });
 
