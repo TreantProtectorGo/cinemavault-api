@@ -26,6 +26,7 @@ type FilmRecord = {
   imdbId: string | null;
   omdbMetadataJson: string | null;
   isLive: boolean;
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -65,6 +66,7 @@ export function formatFilm(film: FilmRecord) {
     imdbId: film.imdbId,
     omdbMetadataJson: film.omdbMetadataJson,
     isLive: film.isLive,
+    deletedAt: film.deletedAt ? film.deletedAt.toISOString() : null,
     createdAt: film.createdAt.toISOString(),
     updatedAt: film.updatedAt.toISOString(),
     links: filmLinks(film.id)
@@ -73,6 +75,7 @@ export function formatFilm(film: FilmRecord) {
 
 function buildWhere(query: FilmQueryInput): Prisma.FilmWhereInput {
   const where: Prisma.FilmWhereInput = {
+    deletedAt: null,
     isLive: query.isLive ?? true
   };
 
@@ -136,7 +139,7 @@ export async function getFilmById(id: string) {
     where: { id }
   });
 
-  if (!film) {
+  if (!film || film.deletedAt) {
     throw new FilmError("Film not found", 404);
   }
 
@@ -275,6 +278,11 @@ export async function importFilmFromOmdb(input: ImportOmdbInput) {
           }
         })
       : null;
+
+    if (previousFilm?.deletedAt) {
+      throw new FilmError("Deleted film cannot be imported or republished", 409);
+    }
+
     const film = filmData.imdbId
       ? await prisma.film.upsert({
           where: {
@@ -307,11 +315,11 @@ export async function importFilmFromOmdb(input: ImportOmdbInput) {
 export async function updateFilm(id: string, input: UpdateFilmInput) {
   try {
     const [previousFilm, film] = await prisma.$transaction(async (tx) => {
-      const existingFilm = await tx.film.findUnique({
+      const existingFilm = await tx.film.findFirst({
         where: { id }
       });
 
-      if (!existingFilm) {
+      if (!existingFilm || existingFilm.deletedAt) {
         throw new FilmError("Film not found", 404);
       }
 
@@ -356,6 +364,7 @@ export async function deleteFilm(id: string) {
     const film = await prisma.film.update({
       where: { id },
       data: {
+        deletedAt: new Date(),
         isLive: false
       }
     });

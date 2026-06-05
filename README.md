@@ -401,6 +401,15 @@ curl -i http://localhost:4000/api/v1/films/<film-id> \
 
 If the validator matches, the API returns `304 Not Modified`.
 
+## Film Live/Draft And Soft Delete
+
+`isLive` controls publishing only:
+
+- `isLive=true`: visible in the public catalogue
+- `isLive=false`: draft/hidden from public browsing
+
+`DELETE /api/v1/films/:id` performs a soft delete by setting `deletedAt` and `isLive=false`. It does not physically remove the row, so favourites, watchlist items, watched records, and messages can keep their film references. Deleted films are excluded from film list responses and film detail lookup returns `404`.
+
 ## OMDB Import
 
 OMDB import is admin-only. Set `OMDB_API_KEY` in `.env`; the key is never hardcoded in source code.

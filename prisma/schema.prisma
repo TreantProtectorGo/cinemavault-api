@@ -43,6 +43,7 @@ model Film {
   imdbId           String?          @unique
   omdbMetadataJson String?
   isLive           Boolean          @default(false)
+  deletedAt        DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -52,6 +53,7 @@ model Film {
   messages         Message[]
 
   @@index([isLive])
+  @@index([deletedAt])
   @@index([title])
   @@index([genre])
   @@index([year])

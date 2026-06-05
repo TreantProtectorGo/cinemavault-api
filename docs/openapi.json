@@ -442,6 +442,7 @@
       "delete": {
         "tags": ["Films"],
         "summary": "Soft-delete a film",
+        "description": "Marks a film as deleted by setting deletedAt and isLive=false. The row is preserved so favourites, watchlist, watched records, and messages keep their references.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "$ref": "#/components/parameters/FilmId" }],
         "responses": {
@@ -875,7 +876,7 @@
       },
       "Film": {
         "type": "object",
-        "required": ["id", "title", "isLive", "createdAt", "updatedAt", "links"],
+        "required": ["id", "title", "isLive", "deletedAt", "createdAt", "updatedAt", "links"],
         "properties": {
           "id": { "type": "string" },
           "title": { "type": "string" },
@@ -892,6 +893,7 @@
           "imdbId": { "type": "string", "nullable": true },
           "omdbMetadataJson": { "type": "string", "nullable": true },
           "isLive": { "type": "boolean" },
+          "deletedAt": { "type": "string", "format": "date-time", "nullable": true },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
           "links": { "type": "object", "additionalProperties": { "type": "string" } }

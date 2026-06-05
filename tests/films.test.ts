@@ -349,11 +349,95 @@ describe("Films API", () => {
     const response = await request(app)
       .delete(`/api/v1/films/${film.id}`)
       .set("Authorization", `Bearer ${adminToken}`);
+    const storedFilm = await prisma.film.findUnique({
+      where: { id: film.id }
+    });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       id: film.id,
       isLive: false
     });
+    expect(response.body.deletedAt).toEqual(expect.any(String));
+    expect(storedFilm?.deletedAt).toBeInstanceOf(Date);
+    expect(storedFilm?.isLive).toBe(false);
+  });
+
+  it("public GET /api/v1/films excludes soft-deleted films", async () => {
+    const liveFilm = await createFilm(adminToken, inceptionPayload);
+    const deletedFilm = await createFilm(adminToken, batmanPayload);
+
+    await request(app)
+      .delete(`/api/v1/films/${deletedFilm.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    const response = await request(app).get("/api/v1/films");
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.map((film: { id: string }) => film.id)).toEqual([
+      liveFilm.id
+    ]);
+  });
+
+  it("public GET /api/v1/films/:id returns 404 for soft-deleted films", async () => {
+    const film = await createFilm(adminToken, inceptionPayload);
+
+    await request(app)
+      .delete(`/api/v1/films/${film.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    const response = await request(app).get(`/api/v1/films/${film.id}`);
+
+    expect(response.status).toBe(404);
+  });
+
+  it("PUT /api/v1/films/:id cannot publish a soft-deleted film", async () => {
+    const film = await createFilm(adminToken, hiddenPayload);
+
+    await request(app)
+      .delete(`/api/v1/films/${film.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    const response = await request(app)
+      .put(`/api/v1/films/${film.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ isLive: true });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("draft films still appear in non-live list while deleted drafts are excluded", async () => {
+    const draftFilm = await createFilm(adminToken, hiddenPayload);
+    const deletedDraft = await createFilm(adminToken, {
+      ...hiddenPayload,
+      title: "Deleted Draft Film",
+      imdbId: "tt0000002"
+    });
+
+    await request(app)
+      .delete(`/api/v1/films/${deletedDraft.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    const response = await request(app).get("/api/v1/films?isLive=false");
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.map((film: { id: string }) => film.id)).toEqual([
+      draftFilm.id
+    ]);
+  });
+
+  it("DELETE /api/v1/films/:id does not trigger social publisher", async () => {
+    const socialPosts: SocialPostPayload[] = [];
+    setSocialPublisherForTest(async (payload) => {
+      socialPosts.push(payload);
+    });
+    const film = await createFilm(adminToken, hiddenPayload);
+
+    const response = await request(app)
+      .delete(`/api/v1/films/${film.id}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(response.status).toBe(200);
+    expect(socialPosts).toHaveLength(0);
   });
 });
