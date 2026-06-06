@@ -33,7 +33,7 @@
         "summary": "Serve the API documentation UI",
         "responses": {
           "200": {
-            "description": "Redoc HTML documentation page",
+            "description": "Swagger UI HTML documentation page",
             "content": {
               "text/html": {
                 "schema": { "type": "string" }

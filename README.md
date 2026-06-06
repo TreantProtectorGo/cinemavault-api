@@ -17,7 +17,7 @@ It provides a TypeScript REST API for a secure film discovery platform with publ
 - Basic Auth evidence endpoint
 - Google OAuth public-user sign-in evidence
 - Jest + Supertest
-- OpenAPI 3.x with Redoc UI
+- OpenAPI 3.x with Swagger UI
 
 ## Coursework Requirement Mapping
 
@@ -35,7 +35,7 @@ It provides a TypeScript REST API for a secure film discovery platform with publ
 - External API: admin-only OMDB import
 - External authentication: Google OAuth creates or logs in normal `USER` accounts only
 - Social feed automation: films made live can publish a configured admin social feed webhook
-- Documentation: OpenAPI JSON and Redoc UI
+- Documentation: OpenAPI JSON and Swagger UI
 - Testing: Jest + Supertest mock HTTP request tests
 - Maintainability: modular route/schema/service structure
 
@@ -182,7 +182,7 @@ Expected response:
 
 ## API Documentation
 
-Open the Redoc API documentation UI after starting the server:
+Open the Swagger UI API documentation after starting the server:
 
 ```text
 http://localhost:4000/api-docs
